@@ -26,8 +26,9 @@ app = Flask(__name__)
 CORS(app, origins=['*'], supports_credentials=True, allow_headers=['Content-Type', 'Authorization'])
 
 # Initialize Groq client with enhanced error handling
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
-os.environ["GROQ_API_KEY"] = GROQ_API_KEY
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+if GROQ_API_KEY:
+    os.environ["GROQ_API_KEY"] = GROQ_API_KEY
 
 try:
     client = Groq(api_key=GROQ_API_KEY)
