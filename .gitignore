@@ -48,6 +48,38 @@ app.*.map.json
 .env
 .env.local
 .env.production
+.env.development
 *.env
-backend/.env
+backend/.env*
+backend/env_*
+
+# Backend logs and temporary files
 backend/ai_backend.log
+backend/*.log
+backend/__pycache__/
+backend/.pytest_cache/
+backend/venv/
+backend/.venv/
+
+# Production build artifacts
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# IDE and OS files
+.vscode/
+.fleet/
+*.swp
+*.swo
+*~
+Thumbs.db
+Desktop.ini
+
+# Documentation and scripts (keeping only README.md)
+*.md
+!README.md
+*.bat
+*.sh
+scripts/

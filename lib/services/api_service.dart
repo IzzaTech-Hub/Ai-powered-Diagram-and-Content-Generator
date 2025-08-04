@@ -10,14 +10,14 @@ import '../widgets/mind_map_template_selector.dart';
 class ApiService {
   // Production and development URLs to try
   static List<String> _possibleUrls = [
-    'https://your-app-name.up.railway.app',  // 🚀 UPDATE THIS AFTER DEPLOYMENT
-    'http://127.0.0.1:5000',                 // Local development
-    'http://localhost:5000',                 // Local development
-    'http://10.0.2.2:5000',                  // Android emulator
-    'http://192.168.0.108:5000',             // Network IP from logs
+    'https://diagramgenerator-hj9d.onrender.com',           // 🚀 Your live backend
+    'http://127.0.0.1:5000',                                 // Local development
+    'http://localhost:5000',                                 // Local development
+    'http://10.0.2.2:5000',                                  // Android emulator
+    'http://192.168.0.108:5000',                             // Network IP from logs
   ];
   
-  static String _baseUrl = 'https://your-app-name.up.railway.app';  // 🚀 UPDATE THIS
+  static String _baseUrl = 'https://diagramgenerator-hj9d.onrender.com';  // 🚀 Your live backend
 
   // Initialize API service
   static void initialize() {
