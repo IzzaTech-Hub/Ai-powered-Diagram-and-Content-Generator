@@ -137,7 +137,7 @@ class ErrorHandler {
     error = error.toLowerCase();
 
     if (error.contains('connection refused') || error.contains('connection error')) {
-      return 'Unable to connect to the server. Please check your internet connection and ensure the backend server is running.';
+      return 'Unable to connect to the server. The backend server is not running. Please start it by running "python app.py" in the backend directory, or check if the production server is available.';
     }
 
     if (error.contains('timeout')) {

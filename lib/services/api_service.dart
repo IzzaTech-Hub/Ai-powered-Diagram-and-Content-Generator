@@ -8,22 +8,22 @@ import '../models/napkin_template.dart';
 import '../widgets/mind_map_template_selector.dart';
 
 class ApiService {
-  // Production and development URLs to try
-  static List<String> _possibleUrls = [
-    'https://diagramgenerator-hj9d.onrender.com',           // 🚀 Your live backend
-    'http://127.0.0.1:5000',                                 // Local development
-    'http://localhost:5000',                                 // Local development
-    'http://10.0.2.2:5000',                                  // Android emulator
-    'http://192.168.0.108:5000',                             // Network IP from logs
+  // Development URLs first for local testing, then production as fallback
+  static final List<String> _possibleUrls = [
+    'http://127.0.0.1:5000', // Local development - prioritize local
+    'http://localhost:5000', // Local development
+    'http://192.168.100.7:5000', // Network IP from current logs
+    'http://10.0.2.2:5000', // Android emulator
+    'https://diagramgenerator-hj9d.onrender.com', // Production backend as fallback
   ];
-  
-  static String _baseUrl = 'https://diagramgenerator-hj9d.onrender.com';  // 🚀 Your live backend
+
+  static String _baseUrl = 'http://127.0.0.1:5000'; // Local development first
 
   // Initialize API service
   static void initialize() {
     print('API Service initialized with endpoint: $_baseUrl');
   }
-  
+
   // Get the current base URL
   static String get baseUrl => _baseUrl;
 
@@ -34,7 +34,7 @@ class ApiService {
         final response = await http
             .get(Uri.parse('$url/health'))
             .timeout(const Duration(seconds: 3));
-        
+
         if (response.statusCode == 200) {
           print('Found working backend at: $url');
           _baseUrl = url;
@@ -53,29 +53,34 @@ class ApiService {
       final response = await http
           .get(Uri.parse('$_baseUrl/health'))
           .timeout(const Duration(seconds: 5));
-      
+
       if (response.statusCode == 200) {
         print('Backend health check successful at $_baseUrl');
         return true;
       } else {
         print('Backend health check returned status: ${response.statusCode}');
-        // Try to find working backend
-        final workingUrl = await findWorkingBackend();
-        return workingUrl != null;
       }
     } catch (e) {
-      print('Backend health check failed: $e');
-      print('Tip: Start the backend server with: python backend/app.py');
-      
-      // Try to find working backend
-      final workingUrl = await findWorkingBackend();
-      if (workingUrl != null) {
-        print('Found alternative backend at: $workingUrl');
-        return true;
-      }
-      
-      return false;
+      print('Backend health check failed at $_baseUrl: $e');
     }
+    
+    // If current URL fails, try to find working backend
+    print('Trying to find alternative working backend...');
+    final workingUrl = await findWorkingBackend();
+    if (workingUrl != null) {
+      print('Found working backend at: $workingUrl');
+      return true;
+    }
+
+    // Provide specific guidance based on error type
+    print('No working backend found. Local backend server might not be running.');
+    print('To start it:');
+    print('1. Open terminal and navigate to backend/ directory');
+    print('2. Run: pip install -r requirements.txt');
+    print('3. Set GROQ_API_KEY environment variable (optional)');
+    print('4. Run: python app.py');
+    
+    return false;
   }
 
   Future<List<MindMapTemplate>> getMindMapTemplates() async {
@@ -83,7 +88,7 @@ class ApiService {
       final response = await http
           .get(Uri.parse('$_baseUrl/mind_map_templates'))
           .timeout(const Duration(seconds: 10));
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         return data.map((item) => MindMapTemplate.fromJson(item)).toList();
@@ -102,18 +107,19 @@ class ApiService {
   }) async {
     try {
       // Prepare templates with additional options
-      final List<Map<String, dynamic>> templatesWithOptions = selectedTemplates.map((template) {
-        final Map<String, dynamic> templateJson = template.toJson();
-        
-        // Add mind map style if this is a mind map template
-        if (template.name.toLowerCase().contains('mind map') && 
-            templateOptions.containsKey('mindMapStyle')) {
-          templateJson['mindMapStyle'] = templateOptions['mindMapStyle'];
-        }
-        
-        return templateJson;
-      }).toList();
-      
+      final List<Map<String, dynamic>> templatesWithOptions =
+          selectedTemplates.map((template) {
+            final Map<String, dynamic> templateJson = template.toJson();
+
+            // Add mind map style if this is a mind map template
+            if (template.name.toLowerCase().contains('mind map') &&
+                templateOptions.containsKey('mindMapStyle')) {
+              templateJson['mindMapStyle'] = templateOptions['mindMapStyle'];
+            }
+
+            return templateJson;
+          }).toList();
+
       final response = await http
           .post(
             Uri.parse('$_baseUrl/generate_ai_content'),
@@ -129,7 +135,9 @@ class ApiService {
         final List<dynamic> responseData = json.decode(response.body);
         return responseData.map((item) {
           // Add the original prompt to each generated content
-          final Map<String, dynamic> enrichedItem = Map<String, dynamic>.from(item);
+          final Map<String, dynamic> enrichedItem = Map<String, dynamic>.from(
+            item,
+          );
           enrichedItem['originalPrompt'] = userInput;
           return GeneratedContent.fromJson(enrichedItem);
         }).toList();
@@ -140,7 +148,7 @@ class ApiService {
       throw Exception('Connection error: $e');
     }
   }
-  
+
   // Add these methods to your existing ApiService class
 
   Future<GeneratedDocument> generateDocument({
@@ -249,14 +257,15 @@ class ApiService {
       throw Exception('Connection error: $e');
     }
   }
-  
+
   Future<List<GeneratedContent>> generateNapkinDiagrams({
     required String userInput,
     required List<NapkinTemplate> napkinTemplates,
   }) async {
     try {
-      final List<Map<String, dynamic>> templatesJson = napkinTemplates.map((template) => template.toJson()).toList();
-      
+      final List<Map<String, dynamic>> templatesJson =
+          napkinTemplates.map((template) => template.toJson()).toList();
+
       final response = await http
           .post(
             Uri.parse('$_baseUrl/generate_napkin_diagrams'),
@@ -280,7 +289,7 @@ class ApiService {
       throw Exception('Connection error: $e');
     }
   }
-  
+
   Future<String> regenerateDiagram({
     required String prompt,
     required String diagramType,
@@ -305,33 +314,97 @@ class ApiService {
           // Store additional info for potential user feedback
           final bool usingAi = responseData['using_ai'] ?? true;
           final String message = responseData['message'] ?? '';
-          
+
           // You could use this info to show different messages to the user
           print('Regeneration result: $message (AI: $usingAi)');
-          
+
           return responseData['svg'] as String;
         } else {
-          throw Exception('Invalid response from backend: ${responseData['error'] ?? 'Unknown error'}');
+          throw Exception(
+            'Invalid response from backend: ${responseData['error'] ?? 'Unknown error'}',
+          );
         }
       } else if (response.statusCode == 503) {
         // Service unavailable - AI service not available
-        throw Exception('AI service is currently unavailable. Please check if the backend has proper API keys configured.');
+        throw Exception(
+          'AI service is currently unavailable. Please check if the backend has proper API keys configured.',
+        );
       } else {
         // Try to parse error message from response
         try {
           final Map<String, dynamic> errorData = json.decode(response.body);
-          throw Exception('Backend error (${response.statusCode}): ${errorData['error'] ?? 'Unknown error'}');
+          throw Exception(
+            'Backend error (${response.statusCode}): ${errorData['error'] ?? 'Unknown error'}',
+          );
         } catch (_) {
-          throw Exception('Backend error: ${response.statusCode} - ${response.reasonPhrase}');
+          throw Exception(
+            'Backend error: ${response.statusCode} - ${response.reasonPhrase}',
+          );
         }
       }
     } catch (e) {
-      if (e.toString().contains('AI service is currently unavailable') || 
+      if (e.toString().contains('AI service is currently unavailable') ||
           e.toString().contains('Backend error')) {
         rethrow; // Re-throw our custom exceptions
       }
-      throw Exception('Connection error: Failed to connect to backend. Please ensure the backend server is running.');
+      throw Exception(
+        'Connection error: Failed to connect to backend. Please ensure the backend server is running.',
+      );
     }
   }
-} 
 
+  // NEW: Generate multiple variations of the same diagram type
+  Future<Map<String, dynamic>> generateDiagramVariations({
+    required String userInput,
+    required String diagramType,
+  }) async {
+    print('Attempting to generate diagram variations...');
+    print('URL: $_baseUrl/generate_diagram_variations');
+    print('User Input: $userInput');
+    print('Diagram Type: $diagramType');
+    
+    try {
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/generate_diagram_variations'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({
+              'userInput': userInput,
+              'diagramType': diagramType,
+            }),
+          )
+          .timeout(const Duration(seconds: 180));
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        print('Successfully generated diagram variations');
+        return responseData;
+      } else {
+        print('Error response: ${response.statusCode} - ${response.body}');
+        throw Exception('Error from backend: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Connection error in generateDiagramVariations: $e');
+      
+      // Try to find working backend if current one fails
+      if (e.toString().contains('Connection refused') || 
+          e.toString().contains('Failed host lookup') ||
+          e.toString().contains('Connection closed')) {
+        print('Attempting to find alternative backend...');
+        final workingUrl = await findWorkingBackend();
+        if (workingUrl != null && workingUrl != _baseUrl) {
+          print('Retrying with working backend: $workingUrl');
+          return generateDiagramVariations(
+            userInput: userInput,
+            diagramType: diagramType,
+          );
+        }
+      }
+      
+      throw Exception('Connection error: $e');
+    }
+  }
+}

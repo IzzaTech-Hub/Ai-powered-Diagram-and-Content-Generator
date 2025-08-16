@@ -4,6 +4,7 @@ class GeneratedContent {
   final bool isDiagram;
   final DateTime timestamp;
   final String? originalPrompt;
+  final String? diagramType;
 
   GeneratedContent({
     required this.templateName,
@@ -11,6 +12,7 @@ class GeneratedContent {
     this.isDiagram = false,
     DateTime? timestamp,
     this.originalPrompt,
+    this.diagramType,
   }) : timestamp = timestamp ?? DateTime.now();
 
   factory GeneratedContent.fromJson(Map<String, dynamic> json) =>
@@ -19,6 +21,7 @@ class GeneratedContent {
         content: json['content'] ?? 'No content generated.',
         isDiagram: json['isDiagram'] ?? false,
         originalPrompt: json['originalPrompt'],
+        diagramType: json['diagramType'],
       );
       
   GeneratedContent copyWith({
@@ -27,6 +30,7 @@ class GeneratedContent {
     bool? isDiagram,
     DateTime? timestamp,
     String? originalPrompt,
+    String? diagramType,
   }) {
     return GeneratedContent(
       templateName: templateName ?? this.templateName,
@@ -34,6 +38,7 @@ class GeneratedContent {
       isDiagram: isDiagram ?? this.isDiagram,
       timestamp: timestamp ?? this.timestamp,
       originalPrompt: originalPrompt ?? this.originalPrompt,
+      diagramType: diagramType ?? this.diagramType,
     );
   }
 } 

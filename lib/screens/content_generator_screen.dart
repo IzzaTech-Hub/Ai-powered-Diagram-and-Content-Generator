@@ -1,22 +1,24 @@
-import 'dart:math' as math;
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:my_flutter_app/screens/login_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/generated_content.dart';
 import '../models/napkin_template.dart';
 import '../services/api_service.dart';
 import '../utils/error_handler.dart';
 import '../widgets/simple_diagram_viewer.dart';
+import '../utils/platform_download.dart';
 
 class ContentGeneratorScreen extends StatefulWidget {
   const ContentGeneratorScreen({super.key});
 
   @override
-  State<ContentGeneratorScreen> createState() =>
-      _ContentGeneratorScreenState();
+  State<ContentGeneratorScreen> createState() => _ContentGeneratorScreenState();
 }
 
-class _ContentGeneratorScreenState
-    extends State<ContentGeneratorScreen>
+class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
     with TickerProviderStateMixin {
   final TextEditingController _inputController = TextEditingController();
   final ApiService _apiService = ApiService();
@@ -29,6 +31,11 @@ class _ContentGeneratorScreenState
   NapkinTemplate? _selectedDiagramTemplate;
   List<NapkinTemplate> _diagramTemplates = [];
   String _selectedDiagramType = 'flowchart';
+
+  // Variation state management
+  List<GeneratedContent> _currentVariations = [];
+  GeneratedContent? _selectedVariation;
+  GeneratedContent? _hoveredVariation;
 
   late AnimationController _animationController;
   late AnimationController _pulseController;
@@ -48,7 +55,8 @@ class _ContentGeneratorScreenState
         napkinType: 'flowchart',
         icon: Icons.account_tree,
         color: const Color(0xFF2563EB),
-        gradientColors: [const Color(0xFF2563EB), const Color(0xFF3B82F6)], promptInstruction: '',
+        gradientColors: [const Color(0xFF2563EB), const Color(0xFF3B82F6)],
+        promptInstruction: '',
       ),
       NapkinTemplate(
         id: 'sequence',
@@ -58,7 +66,8 @@ class _ContentGeneratorScreenState
         napkinType: 'sequence',
         icon: Icons.timeline,
         color: const Color(0xFF059669),
-        gradientColors: [const Color(0xFF059669), const Color(0xFF10B981)], promptInstruction: '',
+        gradientColors: [const Color(0xFF059669), const Color(0xFF10B981)],
+        promptInstruction: '',
       ),
       NapkinTemplate(
         id: 'state',
@@ -68,7 +77,8 @@ class _ContentGeneratorScreenState
         napkinType: 'state',
         icon: Icons.radio_button_checked,
         color: const Color(0xFFDC2626),
-        gradientColors: [const Color(0xFFDC2626), const Color(0xFFEF4444)], promptInstruction: '',
+        gradientColors: [const Color(0xFFDC2626), const Color(0xFFEF4444)],
+        promptInstruction: '',
       ),
     ],
     'Analysis & Planning': [
@@ -80,7 +90,8 @@ class _ContentGeneratorScreenState
         napkinType: 'swot analysis',
         icon: Icons.analytics,
         color: const Color(0xFF7C3AED),
-        gradientColors: [const Color(0xFF7C3AED), const Color(0xFF8B5CF6)], promptInstruction: '',
+        gradientColors: [const Color(0xFF7C3AED), const Color(0xFF8B5CF6)],
+        promptInstruction: '',
       ),
       NapkinTemplate(
         id: 'mindmap',
@@ -90,7 +101,8 @@ class _ContentGeneratorScreenState
         napkinType: 'mind map',
         icon: Icons.psychology,
         color: const Color(0xFFEA580C),
-        gradientColors: [const Color(0xFFEA580C), const Color(0xFFF97316)], promptInstruction: '',
+        gradientColors: [const Color(0xFFEA580C), const Color(0xFFF97316)],
+        promptInstruction: '',
       ),
     ],
     'Timeline & Project': [
@@ -101,7 +113,8 @@ class _ContentGeneratorScreenState
         napkinType: 'timeline',
         icon: Icons.schedule,
         color: const Color(0xFF0891B2),
-        gradientColors: [const Color(0xFF0891B2), const Color(0xFF06B6D4)], promptInstruction: '',
+        gradientColors: [const Color(0xFF0891B2), const Color(0xFF06B6D4)],
+        promptInstruction: '',
       ),
       NapkinTemplate(
         id: 'gantt',
@@ -111,7 +124,8 @@ class _ContentGeneratorScreenState
         napkinType: 'gantt',
         icon: Icons.view_timeline,
         color: const Color(0xFF9333EA),
-        gradientColors: [const Color(0xFF9333EA), const Color(0xFFA855F7)], promptInstruction: '',
+        gradientColors: [const Color(0xFF9333EA), const Color(0xFFA855F7)],
+        promptInstruction: '',
       ),
       NapkinTemplate(
         id: 'journey',
@@ -121,7 +135,8 @@ class _ContentGeneratorScreenState
         napkinType: 'journey',
         icon: Icons.route,
         color: const Color(0xFFBE185D),
-        gradientColors: [const Color(0xFFBE185D), const Color(0xFFDB2777)], promptInstruction: '',
+        gradientColors: [const Color(0xFFBE185D), const Color(0xFFDB2777)],
+        promptInstruction: '',
       ),
     ],
     'Technical & System': [
@@ -133,7 +148,8 @@ class _ContentGeneratorScreenState
         napkinType: 'erd',
         icon: Icons.storage,
         color: const Color(0xFF059669),
-        gradientColors: [const Color(0xFF059669), const Color(0xFF10B981)], promptInstruction: '',
+        gradientColors: [const Color(0xFF059669), const Color(0xFF10B981)],
+        promptInstruction: '',
       ),
       NapkinTemplate(
         id: 'class',
@@ -143,7 +159,8 @@ class _ContentGeneratorScreenState
         napkinType: 'class',
         icon: Icons.class_,
         color: const Color(0xFF7C2D12),
-        gradientColors: [const Color(0xFF7C2D12), const Color(0xFF9A3412)], promptInstruction: '',
+        gradientColors: [const Color(0xFF7C2D12), const Color(0xFF9A3412)],
+        promptInstruction: '',
       ),
       NapkinTemplate(
         id: 'network',
@@ -152,7 +169,8 @@ class _ContentGeneratorScreenState
         napkinType: 'network',
         icon: Icons.hub,
         color: const Color(0xFF1E40AF),
-        gradientColors: [const Color(0xFF1E40AF), const Color(0xFF2563EB)], promptInstruction: '',
+        gradientColors: [const Color(0xFF1E40AF), const Color(0xFF2563EB)],
+        promptInstruction: '',
       ),
       NapkinTemplate(
         id: 'architecture',
@@ -162,7 +180,8 @@ class _ContentGeneratorScreenState
         napkinType: 'architecture',
         icon: Icons.architecture,
         color: const Color(0xFF6D28D9),
-        gradientColors: [const Color(0xFF6D28D9), const Color(0xFF7C3AED)], promptInstruction: '',
+        gradientColors: [const Color(0xFF6D28D9), const Color(0xFF7C3AED)],
+        promptInstruction: '',
       ),
     ],
   };
@@ -211,14 +230,17 @@ class _ContentGeneratorScreenState
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.fastOutSlowIn),
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.fastOutSlowIn,
+      ),
     );
 
     _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    _rotationAnimation = Tween<double>(begin: 0.0, end: 2 * math.pi).animate(
+    _rotationAnimation = Tween<double>(begin: 0.0, end: 2 * 3.14159).animate(
       CurvedAnimation(parent: _loadingController, curve: Curves.linear),
     );
 
@@ -237,7 +259,10 @@ class _ContentGeneratorScreenState
       });
 
       if (isHealthy) {
-        ErrorHandler.showSuccessSnackBar(context, '✅ Backend connected successfully!');
+        ErrorHandler.showSuccessSnackBar(
+          context,
+          '✅ Backend connected successfully!',
+        );
       } else {
         ErrorHandler.showWarningSnackBar(
           context,
@@ -264,8 +289,6 @@ class _ContentGeneratorScreenState
     super.dispose();
   }
 
-
-
   Future<void> _generateDiagram() async {
     if (_inputController.text.isEmpty) {
       ErrorHandler.showErrorSnackBar(
@@ -276,7 +299,10 @@ class _ContentGeneratorScreenState
     }
 
     if (_selectedDiagramTemplate == null) {
-      ErrorHandler.showErrorSnackBar(context, 'Please select a diagram template');
+      ErrorHandler.showErrorSnackBar(
+        context,
+        'Please select a diagram template',
+      );
       return;
     }
 
@@ -297,39 +323,74 @@ class _ContentGeneratorScreenState
     _loadingController.repeat();
 
     try {
-      // Create a copy of the template with the correct napkinType
-      final templateWithType = NapkinTemplate(
-        id: _selectedDiagramTemplate!.id,
-        name: _selectedDiagramTemplate!.name,
-        description: _selectedDiagramTemplate!.description,
-        napkinType: _selectedDiagramType, // Use the selected diagram type
-        icon: _selectedDiagramTemplate!.icon,
-        color: _selectedDiagramTemplate!.color,
-        gradientColors: _selectedDiagramTemplate!.gradientColors, promptInstruction: '',
-      );
+      // Double-check backend health before generating
+      if (!_isBackendHealthy) {
+        print('Backend not healthy, rechecking...');
+        await _checkBackendHealth();
+        if (!_isBackendHealthy) {
+          throw Exception('Backend server is not available');
+        }
+      }
 
-      final diagram = await _apiService.generateNapkinDiagram(
+      // Generate 4 variations using the new endpoint
+      final response = await _apiService.generateDiagramVariations(
         userInput: _inputController.text,
-        napkinTemplate: templateWithType,
+        diagramType: _selectedDiagramType,
       );
+      
+      final variations = response['variations'] as List<dynamic>;
+      
+      // Ensure we have exactly 4 variations
+      if (variations.length < 4) {
+        throw Exception('Expected 4 diagram variations, but received ${variations.length}');
+      }
+      
+      // Convert to GeneratedContent objects with enhanced naming
+      final List<GeneratedContent> diagramVariations = variations.take(4).map((variation) {
+        final variationStyle = variation['variation'] ?? 'standard';
+        
+        return GeneratedContent(
+          templateName: _getVariationDisplayName(variationStyle, _selectedDiagramTemplate!.name),
+          content: variation['content'] ?? '',
+          isDiagram: true,
+          timestamp: DateTime.parse(
+            variation['timestamp'] ?? DateTime.now().toIso8601String(),
+          ),
+          originalPrompt: _inputController.text,
+          diagramType: variationStyle,
+        );
+      }).toList();
 
+      print('About to update state with ${diagramVariations.length} variations');
       setState(() {
-        // Remove any existing diagram of the same type
+        // Remove any existing diagrams of the same type
         _generatedContents.removeWhere(
-          (content) =>
-              content.isDiagram && content.templateName == diagram.templateName,
+          (content) => content.isDiagram && content.templateName.contains(_selectedDiagramTemplate!.name),
         );
 
-        // Add the new diagram
-        _generatedContents.add(diagram);
+        // Add all the new variations
+        _generatedContents.addAll(diagramVariations);
+        
+        // Update variation state
+        _currentVariations = diagramVariations;
+        _selectedVariation = diagramVariations.isNotEmpty ? diagramVariations.first : null;
+        _hoveredVariation = null;
       });
+      print('State updated successfully. Generated contents: ${_generatedContents.length}, Current variations: ${_currentVariations.length}');
 
       ErrorHandler.showSuccessSnackBar(
         context,
-        '🎉 ${_selectedDiagramTemplate!.name} generated successfully!',
+        '🎉 Generated ${diagramVariations.length} ${_selectedDiagramTemplate!.name} variations!',
       );
+      print('Success snackbar shown');
     } catch (e) {
-      final friendlyMessage = ErrorHandler.getFriendlyErrorMessage(e.toString());
+      print('Error in _generateDiagram: $e');
+      print('Backend healthy: $_isBackendHealthy');
+      print('Current base URL: ${ApiService.baseUrl}');
+      
+      final friendlyMessage = ErrorHandler.getFriendlyErrorMessage(
+        e.toString(),
+      );
       setState(() => _errorMessage = friendlyMessage);
       ErrorHandler.showErrorSnackBar(
         context,
@@ -337,149 +398,228 @@ class _ContentGeneratorScreenState
         onRetry: _generateDiagram,
       );
     } finally {
+      print('Entering finally block. Setting _isLoading to false');
       setState(() => _isLoading = false);
       _loadingController.stop();
+      print('Finally block completed. _isLoading is now: $_isLoading');
     }
   }
 
-  void _onDiagramTemplateSelected(NapkinTemplate template) {
-    setState(() {
-      _selectedDiagramTemplate = template;
-      _selectedDiagramType = template.napkinType;
-    });
+  // Helper method to get variation display name
+  String _getVariationDisplayName(String variationStyle, String diagramName) {
+    switch (variationStyle.toLowerCase()) {
+      case 'standard':
+        return '$diagramName - Standard';
+      case 'detailed':
+        return '$diagramName - Detailed';
+      case 'compact':
+        return '$diagramName - Compact';
+      case 'enhanced':
+        return '$diagramName - Enhanced';
+      default:
+        return '$diagramName - $variationStyle';
+    }
+  }
 
+  void _onDiagramTemplateSelected(NapkinTemplate? template) {
+    if (template != null) {
+      setState(() {
+        _selectedDiagramTemplate = template;
+        _selectedDiagramType = template.napkinType;
+      });
+      // Provide haptic feedback
+      HapticFeedback.selectionClick();
+    }
+  }
+
+  // Handle variation hover
+  void _onVariationHover(GeneratedContent? variation) {
+    setState(() {
+      _hoveredVariation = variation;
+    });
+  }
+
+  // Handle variation selection
+  void _onVariationSelected(GeneratedContent variation) {
+    print('Variation selected: ${variation.templateName}');
+    setState(() {
+      _selectedVariation = variation;
+      _hoveredVariation = null; // Clear hover when selecting
+    });
+    print('Selected variation updated: ${_selectedVariation?.templateName}');
     // Provide haptic feedback
     HapticFeedback.selectionClick();
   }
 
-  Widget _buildEnhancedHeader() {
-    return Container(
-      padding: const EdgeInsets.all(24.0),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.indigo.shade50,
-            Colors.purple.shade50,
-            Colors.blue.shade50,
-          ],
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 20,
-            spreadRadius: 0,
-            offset: const Offset(0, 4),
+  // Updated method to handle the download and authentication check
+  Future<void> _handleDownload(String svgContent, String diagramName) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      // User is not logged in, navigate to the LoginScreen
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder:
+                (context) =>
+                    const LoginScreen(), // Using your LoginScreen widget
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              AnimatedBuilder(
-                animation: _pulseAnimation,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: _pulseAnimation.value,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.indigo.shade600,
-                            Colors.purple.shade600,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.indigo.withOpacity(0.4),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.auto_awesome,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                    ),
-                  );
-                },
+        );
+      }
+      return;
+    }
+
+    // User is logged in, proceed with the download
+    try {
+      final fileName =
+          '${diagramName}_${DateTime.now().millisecondsSinceEpoch}.svg';
+      final message = await saveSvgToDownloads(svgContent, fileName);
+
+      if (mounted) {
+        ErrorHandler.showSuccessSnackBar(context, message);
+      }
+    } catch (e) {
+      if (mounted) {
+        ErrorHandler.showErrorSnackBar(context, e.toString());
+      }
+    }
+  }
+
+  Widget _buildEnhancedHeader() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 600;
+        return Container(
+          padding: EdgeInsets.all(isSmallScreen ? 16.0 : 24.0),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.indigo.shade50,
+                Colors.purple.shade50,
+                Colors.blue.shade50,
+              ],
+            ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(32),
+              bottomRight: Radius.circular(32),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 20,
+                spreadRadius: 0,
+                offset: const Offset(0, 4),
               ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ShaderMask(
-                      shaderCallback:
-                          (bounds) => LinearGradient(
-                            colors: [
-                              Colors.indigo.shade600,
-                              Colors.purple.shade600,
-                            ],
-                          ).createShader(bounds),
-                      child: const Text(
-                        'AI Diagram Generator',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
+            ],
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  AnimatedBuilder(
+                    animation: _pulseAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _pulseAnimation.value,
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: _isBackendHealthy ? Colors.green : Colors.red,
-                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.indigo.shade600,
+                                Colors.purple.shade600,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.indigo.withOpacity(0.4),
+                                blurRadius: 20,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.auto_awesome,
+                            color: Colors.white,
+                            size: isSmallScreen ? 24 : 32,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
+                      );
+                    },
+                  ),
+                  SizedBox(width: isSmallScreen ? 12 : 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShaderMask(
+                          shaderCallback:
+                              (bounds) => LinearGradient(
+                                colors: [
+                                  Colors.indigo.shade600,
+                                  Colors.purple.shade600,
+                                ],
+                              ).createShader(bounds),
                           child: Text(
-                            'Create professional diagrams with AI assistance',
+                            'AI Diagram Generator',
                             style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey.shade700,
+                              fontSize: isSmallScreen ? 20 : 28,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color:
+                                    _isBackendHealthy
+                                        ? Colors.green
+                                        : Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Create professional diagrams with AI assistance',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 12 : 16,
+                                  color: Colors.grey.shade700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
+                  ),
+                ],
+              ),
+              if (!isSmallScreen) const SizedBox(height: 20),
+              if (!isSmallScreen)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildStatCard('12', 'Diagram Types', Icons.dashboard),
+                    _buildStatCard('AI', 'Powered', Icons.psychology),
+                    _buildStatCard('Quick', 'Generation', Icons.bolt),
                   ],
                 ),
-              ),
             ],
           ),
-          const SizedBox(height: 20),
-
-          // Enhanced stats
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildStatCard('12', 'Diagram Types', Icons.dashboard),
-              _buildStatCard('AI', 'Powered', Icons.psychology),
-              _buildStatCard('Pro', 'Quality', Icons.star),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -526,141 +666,151 @@ class _ContentGeneratorScreenState
   }
 
   Widget _buildEnhancedInputCard() {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      elevation: 12,
-      shadowColor: Colors.indigo.withOpacity(0.2),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.white, Colors.indigo.shade50.withOpacity(0.3)],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 600;
+        return Card(
+          margin: EdgeInsets.all(isSmallScreen ? 12 : 16),
+          elevation: 12,
+          shadowColor: Colors.indigo.withOpacity(0.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Input section
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.indigo.shade50, Colors.purple.shade50],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.indigo, Colors.purple],
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.lightbulb_outline,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Describe Your Concept',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.indigo,
-                            ),
-                          ),
-                          Text(
-                            'Enter your idea and select a diagram type',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.white, Colors.indigo.shade50.withOpacity(0.3)],
               ),
-
-              const SizedBox(height: 20),
-
-              // Enhanced input field
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      spreadRadius: 1,
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: _inputController,
-                  maxLines: 4,
-                  style: const TextStyle(fontSize: 16),
-                  decoration: InputDecoration(
-                    hintText:
-                        '💡 Describe your concept here...\n\nExamples:\n• "E-commerce checkout process"\n• "Software development lifecycle"\n• "Customer support workflow"',
-                    hintStyle: TextStyle(
-                      color: Colors.grey.shade500,
-                      fontSize: 14,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                        color: Colors.indigo,
-                        width: 2,
-                      ),
-                    ),
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    contentPadding: const EdgeInsets.all(20),
-                  ),
-                  onChanged: (value) => setState(() {}),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Enhanced diagram type selection
-              _buildCategorizedDiagramSelection(),
-
-              const SizedBox(height: 24),
-
-              // Action buttons
-              Row(
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(isSmallScreen ? 16.0 : 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(child: _buildGenerateButton()),
-                  const SizedBox(width: 12),
-                  _buildClearButton(),
+                  // Input section
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.indigo.shade50, Colors.purple.shade50],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.indigo, Colors.purple],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.lightbulb_outline,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Describe Your Concept',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 14 : 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.indigo,
+                                ),
+                              ),
+                              Text(
+                                'Enter your idea and select a diagram type',
+                                style: TextStyle(
+                                  fontSize: isSmallScreen ? 10 : 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(height: isSmallScreen ? 16 : 20),
+
+                  // Enhanced input field
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _inputController,
+                      maxLines: isSmallScreen ? 3 : 4,
+                      style: const TextStyle(fontSize: 16),
+                      decoration: InputDecoration(
+                        hintText:
+                            '💡 Describe your concept here...\n\nExamples:\n• "E-commerce checkout process"\n• "Software development lifecycle"\n• "Customer support workflow"',
+                        hintStyle: TextStyle(
+                          color: Colors.grey.shade500,
+                          fontSize: isSmallScreen ? 12 : 14,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Colors.indigo,
+                            width: 2,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                        contentPadding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                      ),
+                      onChanged: (value) => setState(() {}),
+                    ),
+                  ),
+
+                  SizedBox(height: isSmallScreen ? 20 : 24),
+
+                  // Enhanced diagram type selection with dropdown
+                  _buildDiagramTypeDropdown(),
+
+                  SizedBox(height: isSmallScreen ? 20 : 24),
+
+                  // Action buttons
+                  Row(
+                    children: [
+                      Expanded(child: _buildGenerateButton()),
+                      const SizedBox(width: 12),
+                      _buildClearButton(),
+                    ],
+                  ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildCategorizedDiagramSelection() {
+  Widget _buildDiagramTypeDropdown() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -681,11 +831,11 @@ class _ContentGeneratorScreenState
                 ),
               ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Select Diagram Type',
                       style: TextStyle(
                         fontSize: 18,
@@ -703,166 +853,63 @@ class _ContentGeneratorScreenState
             ],
           ),
         ),
-
         const SizedBox(height: 16),
-
-        // Categorized diagram templates
-        ..._categorizedTemplates.entries.map((entry) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  entry.key,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-              ),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children:
-                    entry.value.map((template) {
-                      final isSelected =
-                          _selectedDiagramTemplate?.id == template.id;
-                      return InkWell(
-                        onTap: () => _onDiagramTemplateSelected(template),
-                        borderRadius: BorderRadius.circular(12),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient:
-                                isSelected
-                                    ? LinearGradient(
-                                      colors: template.gradientColors,
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    )
-                                    : null,
-                            color: isSelected ? null : Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color:
-                                  isSelected
-                                      ? template.color
-                                      : Colors.grey.shade300,
-                              width: isSelected ? 2 : 1,
-                            ),
-                            boxShadow:
-                                isSelected
-                                    ? [
-                                      BoxShadow(
-                                        color: template.color.withOpacity(0.3),
-                                        blurRadius: 8,
-                                        spreadRadius: 1,
-                                      ),
-                                    ]
-                                    : null,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade300, width: 1),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<NapkinTemplate>(
+              isExpanded: true,
+              value: _selectedDiagramTemplate,
+              icon: const Icon(Icons.arrow_drop_down, color: Colors.indigo),
+              iconSize: 24,
+              elevation: 16,
+              style: const TextStyle(color: Colors.indigo, fontSize: 16),
+              onChanged: _onDiagramTemplateSelected,
+              items:
+                  _diagramTemplates.map<DropdownMenuItem<NapkinTemplate>>((
+                    template,
+                  ) {
+                    return DropdownMenuItem<NapkinTemplate>(
+                      value: template,
+                      child: Row(
+                        children: [
+                          Icon(template.icon, color: template.color),
+                          const SizedBox(width: 16),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                template.icon,
-                                color:
-                                    isSelected ? Colors.white : template.color,
-                                size: 20,
+                              Text(
+                                template.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
                               ),
-                              const SizedBox(width: 8),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    template.name,
-                                    style: TextStyle(
-                                      color:
-                                          isSelected
-                                              ? Colors.white
-                                              : Colors.grey.shade800,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                    ),
+                              SizedBox(
+                                width: MediaQuery.of(context).size.width * 0.5,
+                                child: Text(
+                                  template.description,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
                                   ),
-                                  SizedBox(
-                                    width: 140,
-                                    child: Text(
-                                      template.description,
-                                      style: TextStyle(
-                                        color:
-                                            isSelected
-                                                ? Colors.white.withOpacity(0.9)
-                                                : Colors.grey.shade600,
-                                        fontSize: 10,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
-                        ),
-                      );
-                    }).toList(),
-              ),
-              const SizedBox(height: 16),
-            ],
-          );
-        }).toList(),
-
-        // Selected diagram info
-        if (_selectedDiagramTemplate != null) ...[
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _selectedDiagramTemplate!.color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: _selectedDiagramTemplate!.color.withOpacity(0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  _selectedDiagramTemplate!.icon,
-                  color: _selectedDiagramTemplate!.color,
-                  size: 24,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Selected: ${_selectedDiagramTemplate!.name}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: _selectedDiagramTemplate!.color,
-                        ),
+                        ],
                       ),
-                      Text(
-                        _selectedDiagramTemplate!.description,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                    );
+                  }).toList(),
             ),
           ),
-        ],
+        ),
       ],
     );
   }
@@ -930,6 +977,9 @@ class _ContentGeneratorScreenState
           _inputController.clear();
           _generatedContents.clear();
           _errorMessage = null;
+          _currentVariations.clear();
+          _selectedVariation = null;
+          _hoveredVariation = null;
         });
       },
       style: OutlinedButton.styleFrom(
@@ -1100,12 +1150,14 @@ class _ContentGeneratorScreenState
                       child: SimpleDiagramViewer(
                         generatedContent: content,
                         template: template,
-                        originalPrompt: content.originalPrompt ?? _inputController.text,
+                        originalPrompt:
+                            content.originalPrompt ?? _inputController.text,
                         onDiagramUpdated: (updatedContent) {
                           setState(() {
                             _generatedContents[index] = updatedContent;
                           });
                         },
+                        svgContent: null,
                       ),
                     ),
 
@@ -1147,12 +1199,11 @@ class _ContentGeneratorScreenState
                           ),
                           IconButton(
                             icon: const Icon(Icons.download, size: 18),
-                            onPressed: () {
-                              ErrorHandler.showSuccessSnackBar(
-                                context,
-                                'Download feature coming soon',
-                              );
-                            },
+                            onPressed:
+                                () => _handleDownload(
+                                  content.content,
+                                  content.templateName,
+                                ),
                             tooltip: 'Download',
                             color: Colors.grey.shade700,
                           ),
@@ -1170,233 +1221,251 @@ class _ContentGeneratorScreenState
   }
 
   Widget _buildLoadingState() {
-    return Container(
-      padding: const EdgeInsets.all(40),
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedBuilder(
-            animation: _rotationAnimation,
-            builder: (context, child) {
-              return Transform.rotate(
-                angle: _rotationAnimation.value,
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.indigo, Colors.purple],
-                    ),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.indigo.withOpacity(0.3),
-                        blurRadius: 15,
-                        spreadRadius: 3,
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.auto_awesome,
-                    color: Colors.white,
-                    size: 40,
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          ShaderMask(
-            shaderCallback:
-                (bounds) => LinearGradient(
-                  colors: [Colors.indigo, Colors.purple],
-                ).createShader(bounds),
-            child: const Text(
-              'Creating Your Professional Diagram',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 600;
+        return Container(
+          padding: EdgeInsets.all(isSmallScreen ? 20 : 40),
+          margin: EdgeInsets.all(isSmallScreen ? 12 : 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                spreadRadius: 0,
               ),
-              textAlign: TextAlign.center,
-            ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Our AI is crafting a high-quality ${_selectedDiagramTemplate?.name ?? 'diagram'} for you.\nThis may take up to 30 seconds.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 24),
-
-          // Enhanced progress indicator
-          Container(
-            width: 200,
-            child: Column(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.indigo),
-                    minHeight: 6,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                AnimatedBuilder(
-                  animation: _pulseController,
-                  builder: (context, _) {
-                    final steps = [
-                      'Analyzing your input...',
-                      'Generating diagram structure...',
-                      'Applying professional styling...',
-                      'Finalizing your diagram...',
-                    ];
-                    final currentStep =
-                        (_pulseController.value * 4).floor() % 4;
-                    return Text(
-                      steps[currentStep],
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                        fontStyle: FontStyle.italic,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedBuilder(
+                animation: _rotationAnimation,
+                builder: (context, child) {
+                  return Transform.rotate(
+                    angle: _rotationAnimation.value,
+                    child: Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.indigo, Colors.purple],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.indigo.withOpacity(0.3),
+                            blurRadius: 15,
+                            spreadRadius: 3,
+                          ),
+                        ],
                       ),
-                    );
-                  },
+                      child: Icon(
+                        Icons.auto_awesome,
+                        color: Colors.white,
+                        size: isSmallScreen ? 32 : 40,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              SizedBox(height: isSmallScreen ? 16 : 24),
+              ShaderMask(
+                shaderCallback:
+                    (bounds) => LinearGradient(
+                      colors: [Colors.indigo, Colors.purple],
+                    ).createShader(bounds),
+                child: Text(
+                  'Creating Your Professional Diagram',
+                  style: TextStyle(
+                    fontSize: isSmallScreen ? 18 : 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              ],
-            ),
+              ),
+              SizedBox(height: isSmallScreen ? 6 : 8),
+              Text(
+                'Our AI is crafting a high-quality ${_selectedDiagramTemplate?.name ?? 'diagram'} for you.\nThis may take up to 30 seconds.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 12 : 16,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+              SizedBox(height: isSmallScreen ? 16 : 24),
+
+              // Enhanced progress indicator
+              SizedBox(
+                width: isSmallScreen ? 150 : 200,
+                child: Column(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors.indigo,
+                        ),
+                        minHeight: 6,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    AnimatedBuilder(
+                      animation: _pulseController,
+                      builder: (context, _) {
+                        final steps = [
+                          'Analyzing your input...',
+                          'Generating diagram structure...',
+                          'Applying professional styling...',
+                          'Finalizing your diagram...',
+                        ];
+                        final currentStep =
+                            (_pulseController.value * 4).floor() % 4;
+                        return Text(
+                          steps[currentStep],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildEmptyState() {
-    return Container(
-      padding: const EdgeInsets.all(40),
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            spreadRadius: 0,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 600;
+        return Container(
+          padding: EdgeInsets.all(isSmallScreen ? 20 : 40),
+          margin: EdgeInsets.all(isSmallScreen ? 12 : 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                spreadRadius: 0,
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedBuilder(
-            animation: _pulseAnimation,
-            builder: (context, child) {
-              return Transform.scale(
-                scale: _pulseAnimation.value,
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.grey.shade100, Colors.grey.shade200],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _pulseAnimation.value,
+                    child: Container(
+                      padding: EdgeInsets.all(isSmallScreen ? 20 : 24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.grey.shade100, Colors.grey.shade200],
+                        ),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.design_services_outlined,
+                        size: isSmallScreen ? 40 : 60,
+                        color: Colors.grey.shade400,
+                      ),
                     ),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        spreadRadius: 2,
+                  );
+                },
+              ),
+              SizedBox(height: isSmallScreen ? 16 : 24),
+              Text(
+                'Ready to Create Professional Diagrams',
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 18 : 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: isSmallScreen ? 8 : 12),
+              Text(
+                'Enter your concept above and select a diagram type\nto generate professional visualizations with AI',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: isSmallScreen ? 12 : 16,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+
+              if (!_isBackendHealthy) ...[
+                SizedBox(height: isSmallScreen ? 16 : 24),
+                Container(
+                  padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    border: Border.all(color: Colors.orange.shade200, width: 2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.warning_amber,
+                        color: Colors.orange.shade600,
+                        size: isSmallScreen ? 24 : 32,
+                      ),
+                      SizedBox(height: isSmallScreen ? 6 : 8),
+                      Text(
+                        'Backend Server Required',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange.shade700,
+                          fontSize: isSmallScreen ? 14 : 16,
+                        ),
+                      ),
+                      SizedBox(height: isSmallScreen ? 2 : 4),
+                      Text(
+                        'Please run: python enhanced_original_backend.py',
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 12 : 14,
+                          color: Colors.orange.shade600,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      SizedBox(height: isSmallScreen ? 8 : 12),
+                      OutlinedButton.icon(
+                        onPressed: _checkBackendHealth,
+                        icon: const Icon(Icons.refresh, size: 16),
+                        label: const Text('Check Connection'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.orange.shade700,
+                          side: BorderSide(color: Colors.orange.shade400),
+                        ),
                       ),
                     ],
                   ),
-                  child: Icon(
-                    Icons.design_services_outlined,
-                    size: 60,
-                    color: Colors.grey.shade400,
-                  ),
                 ),
-              );
-            },
+              ],
+            ],
           ),
-          const SizedBox(height: 24),
-          Text(
-            'Ready to Create Professional Diagrams',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade700,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Enter your concept above and select a diagram type\nto generate professional visualizations with AI',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-          ),
-
-          if (!_isBackendHealthy) ...[
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                border: Border.all(color: Colors.orange.shade200, width: 2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.warning_amber,
-                    color: Colors.orange.shade600,
-                    size: 32,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Backend Server Required',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange.shade700,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Please run: python enhanced_original_backend.py',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.orange.shade600,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: _checkBackendHealth,
-                    icon: const Icon(Icons.refresh, size: 16),
-                    label: const Text('Check Connection'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.orange.shade700,
-                      side: BorderSide(color: Colors.orange.shade400),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -1473,12 +1542,25 @@ class _ContentGeneratorScreenState
 
                 // Content Area
                 SliverToBoxAdapter(
-                  child:
-                      _isLoading && _generatedContents.isEmpty
-                          ? _buildLoadingState()
-                          : _generatedContents.isEmpty
-                          ? _buildEmptyState()
-                          : _buildContentList(),
+                  child: Builder(
+                    builder: (context) {
+                      print('Building main content area - isLoading: $_isLoading, generatedContents: ${_generatedContents.length}, currentVariations: ${_currentVariations.length}');
+                      
+                      if (_isLoading && _generatedContents.isEmpty) {
+                        print('Showing loading state');
+                        return _buildLoadingState();
+                      } else if (_generatedContents.isEmpty) {
+                        print('Showing empty state');
+                        return _buildEmptyState();
+                      } else if (_currentVariations.isNotEmpty) {
+                        print('Showing variations layout with ${_currentVariations.length} variations');
+                        return _buildVariationsLayout();
+                      } else {
+                        print('Showing content list');
+                        return _buildContentList();
+                      }
+                    },
+                  ),
                 ),
 
                 // Bottom padding
@@ -1488,6 +1570,423 @@ class _ContentGeneratorScreenState
           ),
         ),
       ),
+    );
+  }
+
+  // Build variations layout with left sidebar
+  Widget _buildVariationsLayout() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      height: 700, // Increased height for better visibility
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left sidebar with variation thumbnails
+          Container(
+            width: 300, // Slightly wider for better visibility
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Sidebar header
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.indigo.shade600, Colors.purple.shade600],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.dashboard, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text(
+                        'Diagram Variations',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Variations list
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: _currentVariations.length,
+                    itemBuilder: (context, index) {
+                      final variation = _currentVariations[index];
+                      final isSelected = _selectedVariation == variation;
+                      final isHovered = _hoveredVariation == variation;
+                      
+                      return MouseRegion(
+                        onEnter: (_) {
+                          _onVariationHover(variation);
+                        },
+                        onExit: (_) {
+                          _onVariationHover(null);
+                        },
+                        child: GestureDetector(
+                          onTap: () {
+                            _onVariationSelected(variation);
+                          },
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isSelected ? Colors.indigo.shade50 : Colors.grey.shade50,
+                              border: Border.all(
+                                color: isSelected 
+                                    ? Colors.indigo.shade300 
+                                    : isHovered 
+                                        ? Colors.indigo.shade200 
+                                        : Colors.grey.shade300,
+                                width: isSelected ? 2 : 1,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: isHovered ? [
+                                BoxShadow(
+                                  color: Colors.indigo.withOpacity(0.2),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ] : null,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Variation thumbnail
+                                Container(
+                                  height: 140, // Increased height for better preview
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.grey.shade200),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: SimpleDiagramViewer(
+                                      generatedContent: variation,
+                                      template: _diagramTemplates.firstWhere(
+                                        (t) => t.name == variation.templateName,
+                                        orElse: () => _diagramTemplates.first,
+                                      ),
+                                      onDiagramUpdated: (updatedContent) {
+                                        setState(() {
+                                          final index = _currentVariations.indexOf(variation);
+                                          if (index != -1) {
+                                            _currentVariations[index] = updatedContent;
+                                          }
+                                        });
+                                      },
+                                      originalPrompt: variation.originalPrompt ?? '',
+                                      svgContent: variation.content,
+                                      isPreview: true,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                
+                                // Variation info
+                                Text(
+                                  variation.diagramType?.split('_').map((word) => 
+                                    word[0].toUpperCase() + word.substring(1)
+                                  ).join(' ') ?? 'Standard',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: isSelected ? Colors.indigo.shade700 : Colors.grey.shade700,
+                                  ),
+                                ),
+                                Text(
+                                  'Variation ${index + 1}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                // Add variation style info
+                                Text(
+                                  _getVariationStyleName(variation),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey.shade500,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                                // Add current display indicator
+                                if (isSelected || isHovered)
+                                  Container(
+                                    margin: const EdgeInsets.only(top: 4),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? Colors.indigo.shade100 : Colors.indigo.shade50,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: isSelected ? Colors.indigo.shade300 : Colors.indigo.shade200,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      isSelected ? 'Currently Displayed' : 'Hovering',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: isSelected ? Colors.indigo.shade700 : Colors.indigo.shade600,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(width: 16),
+          
+          // Main content area
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Builder(
+                builder: (context) {
+                  print('Building main content area - Selected: ${_selectedVariation?.templateName}, Hovered: ${_hoveredVariation?.templateName}');
+                  return _selectedVariation != null || _hoveredVariation != null
+                      ? _buildVariationDetails(_hoveredVariation ?? _selectedVariation!)
+                      : const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.touch_app,
+                                size: 64,
+                                color: Colors.grey,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'Select a variation to view details',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Hover over variations to preview',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to get variation style name
+  String _getVariationStyleName(GeneratedContent variation) {
+    if (variation.diagramType?.contains('standard') == true) return 'Standard Style';
+    if (variation.diagramType?.contains('detailed') == true) return 'Detailed Style';
+    if (variation.diagramType?.contains('compact') == true) return 'Compact Style';
+    if (variation.diagramType?.contains('enhanced') == true) return 'Enhanced Style';
+    return 'Custom Style';
+  }
+
+  // Build variation details view
+  Widget _buildVariationDetails(GeneratedContent variation) {
+    final template = _diagramTemplates.firstWhere(
+      (t) => t.name == variation.templateName,
+      orElse: () => _diagramTemplates.first,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: template.gradientColors,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              topRight: Radius.circular(16),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  template.icon,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getVariationDisplayName(variation.diagramType ?? 'standard', template.name),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      'Based on: "${variation.originalPrompt ?? 'No prompt'}"',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _getVariationStyleName(variation),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Action buttons
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () => _handleDownload(variation.content, variation.templateName),
+                    icon: const Icon(Icons.download, color: Colors.white),
+                    tooltip: 'Download SVG',
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => SimpleDiagramViewer(
+                            generatedContent: variation,
+                            template: template,
+                            onDiagramUpdated: (updatedContent) {
+                              setState(() {
+                                final index = _currentVariations.indexOf(variation);
+                                if (index != -1) {
+                                  _currentVariations[index] = updatedContent;
+                                  if (_selectedVariation == variation) {
+                                    _selectedVariation = updatedContent;
+                                  }
+                                }
+                              });
+                            },
+                            originalPrompt: variation.originalPrompt ?? '',
+                            svgContent: variation.content,
+                            isPreview: false,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.edit, color: Colors.white),
+                    tooltip: 'Edit Diagram',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        
+        // Diagram display
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+              child: SimpleDiagramViewer(
+                generatedContent: variation,
+                template: template,
+                onDiagramUpdated: (updatedContent) {
+                  setState(() {
+                    final index = _currentVariations.indexOf(variation);
+                    if (index != -1) {
+                      _currentVariations[index] = updatedContent;
+                      if (_selectedVariation == variation) {
+                        _selectedVariation = updatedContent;
+                      }
+                    }
+                  });
+                },
+                originalPrompt: variation.originalPrompt ?? '',
+                svgContent: variation.content,
+                isPreview: false,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

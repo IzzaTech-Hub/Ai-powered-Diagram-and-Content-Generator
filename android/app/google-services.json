@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "960685646692",
+    "project_id": "diagram-generator-562d2",
+    "storage_bucket": "diagram-generator-562d2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:960685646692:android:7a7ee14da0bc0a4afbd071",
+        "android_client_info": {
+          "package_name": "com.example.my_flutter_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5qsmqaC4TJ7kUSJRWpKdKGfEkWfgwDeU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

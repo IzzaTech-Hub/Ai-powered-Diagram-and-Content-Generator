@@ -10,6 +10,8 @@ class SimpleDiagramViewer extends StatefulWidget {
   final NapkinTemplate template;
   final Function(GeneratedContent) onDiagramUpdated;
   final String originalPrompt;
+  final String? svgContent;
+  final bool isPreview;
 
   const SimpleDiagramViewer({
     super.key,
@@ -17,6 +19,8 @@ class SimpleDiagramViewer extends StatefulWidget {
     required this.template,
     required this.onDiagramUpdated,
     required this.originalPrompt,
+    required this.svgContent,
+    this.isPreview = false,
   });
 
   @override
@@ -32,6 +36,17 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
   void initState() {
     super.initState();
     _currentSvg = widget.generatedContent.content;
+  }
+
+  @override
+  void didUpdateWidget(SimpleDiagramViewer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update the SVG content when the widget is updated with new content
+    if (oldWidget.generatedContent.content != widget.generatedContent.content) {
+      setState(() {
+        _currentSvg = widget.generatedContent.content;
+      });
+    }
   }
 
   @override
@@ -86,7 +101,41 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
       return _buildFullscreenDialog();
     }
     
+    // If this is a preview mode, return simplified view
+    if (widget.isPreview) {
+      return _buildPreviewView();
+    }
+    
     return _buildNormalView();
+  }
+
+  Widget _buildPreviewView() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.white,
+      child: Center(
+        child: SvgPicture.string(
+          _currentSvg,
+          fit: BoxFit.contain,
+          width: 200, // Fixed width for consistent thumbnails
+          height: 120, // Fixed height for consistent thumbnails
+          placeholderBuilder: (context) => Container(
+            width: 200,
+            height: 120,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildNormalView() {

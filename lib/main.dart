@@ -1,17 +1,18 @@
 // lib/main.dart
-
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:my_flutter_app/screens/login_screen.dart';
 import 'screens/content_generator_screen.dart';
-// Removed Napkin AI Screen import
 import 'screens/document_generator_screen.dart';
 import 'constants/app_theme.dart';
 import 'services/api_service.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   ApiService.initialize();
-
   runApp(const MyApp());
 }
 
@@ -24,11 +25,20 @@ class MyApp extends StatelessWidget {
       title: 'AI Content Generator Pro',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.getAppTheme(),
-      home: const MainNavigationScreen(),
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasData) {
+            return const MainNavigationScreen();
+          }
+          return const LoginScreen();
+        },
+      ),
       routes: {
         '/content_generator': (context) => const ContentGeneratorScreen(),
-        // Removed Napkin AI route
-        // CORRECTED: No arguments passed to DocumentGeneratorScreen here
         '/document_generator': (context) => const DocumentGeneratorScreen(),
       },
     );
@@ -45,7 +55,6 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
 
-  // Lazy load screens to improve startup performance
   Widget _getScreen(int index) {
     switch (index) {
       case 0:
@@ -60,6 +69,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('AI Content Generator Pro'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+            },
+            tooltip: 'Logout',
+          ),
+        ],
+      ),
       body: _getScreen(_selectedIndex),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
