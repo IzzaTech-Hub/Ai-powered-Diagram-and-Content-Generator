@@ -241,12 +241,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 🤝 Support
 
-### Need Help?
-- 📧 **Email**: hanyasheikh0@gmail.com
-- 🐛 **Issues**: [GitHub Issues](https://github.com/hanyaaqeel/DiagramGenerator/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/hanyaaqeel/DiagramGenerator/discussions)
+
 
 ### Found a Bug?
 Please create an issue with:
@@ -270,7 +266,5 @@ Please create an issue with:
 <div align="center">
 
 **⭐ Star this repository if you found it helpful!**
-
-Made with ❤️ by [Hanya Aqeel](https://github.com/hanyaaqeel)
 
 </div>

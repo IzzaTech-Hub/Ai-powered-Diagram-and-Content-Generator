@@ -566,7 +566,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                                 ],
                               ).createShader(bounds),
                           child: Text(
-                            'AI Diagram Generator',
+                            'Diagram Generator',
                             style: TextStyle(
                               fontSize: isSmallScreen ? 20 : 28,
                               fontWeight: FontWeight.bold,
@@ -591,10 +591,10 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Create professional diagrams with AI assistance',
+                                _isBackendHealthy ? 'Ready' : 'Connecting...',
                                 style: TextStyle(
                                   fontSize: isSmallScreen ? 12 : 16,
-                                  color: Colors.grey.shade700,
+                                  color: _isBackendHealthy ? Colors.green.shade700 : Colors.orange.shade700,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -606,62 +606,10 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                   ),
                 ],
               ),
-              if (!isSmallScreen) const SizedBox(height: 20),
-              if (!isSmallScreen)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildStatCard('12', 'Diagram Types', Icons.dashboard),
-                    _buildStatCard('AI', 'Powered', Icons.psychology),
-                    _buildStatCard('Quick', 'Generation', Icons.bolt),
-                  ],
-                ),
             ],
           ),
         );
       },
-    );
-  }
-
-  Widget _buildStatCard(String value, String label, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.indigo.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: Colors.indigo, size: 24),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.indigo,
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1035,7 +983,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                       ),
                     ),
                     Text(
-                      'Created ${_generatedContents.length} professional diagrams',
+                      'Created ${_generatedContents.length} diagrams',
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey.shade600,
@@ -1277,7 +1225,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                       colors: [Colors.indigo, Colors.purple],
                     ).createShader(bounds),
                 child: Text(
-                  'Creating Your Professional Diagram',
+                  'Creating Diagram',
                   style: TextStyle(
                     fontSize: isSmallScreen ? 18 : 24,
                     fontWeight: FontWeight.bold,
@@ -1288,7 +1236,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
               ),
               SizedBox(height: isSmallScreen ? 6 : 8),
               Text(
-                'Our AI is crafting a high-quality ${_selectedDiagramTemplate?.name ?? 'diagram'} for you.\nThis may take up to 30 seconds.',
+                'Generating ${_selectedDiagramTemplate?.name ?? 'diagram'}...',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: isSmallScreen ? 12 : 16,
@@ -1317,9 +1265,9 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                       animation: _pulseController,
                       builder: (context, _) {
                         final steps = [
-                          'Analyzing your input...',
-                          'Generating diagram structure...',
-                          'Applying professional styling...',
+                          'Analyzing input...',
+                          'Creating structure...',
+                          'Applying styling...',
                           'Finalizing your diagram...',
                         ];
                         final currentStep =
@@ -1396,7 +1344,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
               ),
               SizedBox(height: isSmallScreen ? 16 : 24),
               Text(
-                'Ready to Create Professional Diagrams',
+                'Ready to Create Diagrams',
                 style: TextStyle(
                   fontSize: isSmallScreen ? 18 : 24,
                   fontWeight: FontWeight.bold,
@@ -1406,7 +1354,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
               ),
               SizedBox(height: isSmallScreen ? 8 : 12),
               Text(
-                'Enter your concept above and select a diagram type\nto generate professional visualizations with AI',
+                'Enter your concept above and select a diagram type',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: isSmallScreen ? 12 : 16,
