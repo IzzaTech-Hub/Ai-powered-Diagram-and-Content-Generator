@@ -323,15 +323,6 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
     _loadingController.repeat();
 
     try {
-      // Double-check backend health before generating
-      if (!_isBackendHealthy) {
-        print('Backend not healthy, rechecking...');
-        await _checkBackendHealth();
-        if (!_isBackendHealthy) {
-          throw Exception('Backend server is not available');
-        }
-      }
-
       // Generate 4 variations using the new endpoint
       final response = await _apiService.generateDiagramVariations(
         userInput: _inputController.text,
@@ -348,6 +339,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
       // Convert to GeneratedContent objects with enhanced naming
       final List<GeneratedContent> diagramVariations = variations.take(4).map((variation) {
         final variationStyle = variation['variation'] ?? 'standard';
+        final colorTheme = variation['colorTheme'] ?? 'blue';
         
         return GeneratedContent(
           templateName: _getVariationDisplayName(variationStyle, _selectedDiagramTemplate!.name),
@@ -361,7 +353,6 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
         );
       }).toList();
 
-      print('About to update state with ${diagramVariations.length} variations');
       setState(() {
         // Remove any existing diagrams of the same type
         _generatedContents.removeWhere(
@@ -376,18 +367,12 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
         _selectedVariation = diagramVariations.isNotEmpty ? diagramVariations.first : null;
         _hoveredVariation = null;
       });
-      print('State updated successfully. Generated contents: ${_generatedContents.length}, Current variations: ${_currentVariations.length}');
 
       ErrorHandler.showSuccessSnackBar(
         context,
         '🎉 Generated ${diagramVariations.length} ${_selectedDiagramTemplate!.name} variations!',
       );
-      print('Success snackbar shown');
     } catch (e) {
-      print('Error in _generateDiagram: $e');
-      print('Backend healthy: $_isBackendHealthy');
-      print('Current base URL: ${ApiService.baseUrl}');
-      
       final friendlyMessage = ErrorHandler.getFriendlyErrorMessage(
         e.toString(),
       );
@@ -398,10 +383,8 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
         onRetry: _generateDiagram,
       );
     } finally {
-      print('Entering finally block. Setting _isLoading to false');
       setState(() => _isLoading = false);
       _loadingController.stop();
-      print('Finally block completed. _isLoading is now: $_isLoading');
     }
   }
 
@@ -566,7 +549,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                                 ],
                               ).createShader(bounds),
                           child: Text(
-                            'Diagram Generator',
+                            'AI Diagram Generator',
                             style: TextStyle(
                               fontSize: isSmallScreen ? 20 : 28,
                               fontWeight: FontWeight.bold,
@@ -591,10 +574,10 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                _isBackendHealthy ? 'Ready' : 'Connecting...',
+                                'Create professional diagrams with AI assistance',
                                 style: TextStyle(
                                   fontSize: isSmallScreen ? 12 : 16,
-                                  color: _isBackendHealthy ? Colors.green.shade700 : Colors.orange.shade700,
+                                  color: Colors.grey.shade700,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -606,10 +589,62 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                   ),
                 ],
               ),
+              if (!isSmallScreen) const SizedBox(height: 20),
+              if (!isSmallScreen)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildStatCard('12', 'Diagram Types', Icons.dashboard),
+                    _buildStatCard('AI', 'Powered', Icons.psychology),
+                    _buildStatCard('Quick', 'Generation', Icons.bolt),
+                  ],
+                ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildStatCard(String value, String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.indigo.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: Colors.indigo, size: 24),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.indigo,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
     );
   }
 
@@ -983,7 +1018,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                       ),
                     ),
                     Text(
-                      'Created ${_generatedContents.length} diagrams',
+                      'Created ${_generatedContents.length} professional diagrams',
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.grey.shade600,
@@ -1225,7 +1260,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                       colors: [Colors.indigo, Colors.purple],
                     ).createShader(bounds),
                 child: Text(
-                  'Creating Diagram',
+                  'Creating Your Professional Diagram',
                   style: TextStyle(
                     fontSize: isSmallScreen ? 18 : 24,
                     fontWeight: FontWeight.bold,
@@ -1236,7 +1271,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
               ),
               SizedBox(height: isSmallScreen ? 6 : 8),
               Text(
-                'Generating ${_selectedDiagramTemplate?.name ?? 'diagram'}...',
+                'Our AI is crafting a high-quality ${_selectedDiagramTemplate?.name ?? 'diagram'} for you.\nThis may take up to 30 seconds.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: isSmallScreen ? 12 : 16,
@@ -1265,9 +1300,9 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                       animation: _pulseController,
                       builder: (context, _) {
                         final steps = [
-                          'Analyzing input...',
-                          'Creating structure...',
-                          'Applying styling...',
+                          'Analyzing your input...',
+                          'Generating diagram structure...',
+                          'Applying professional styling...',
                           'Finalizing your diagram...',
                         ];
                         final currentStep =
@@ -1344,7 +1379,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
               ),
               SizedBox(height: isSmallScreen ? 16 : 24),
               Text(
-                'Ready to Create Diagrams',
+                'Ready to Create Professional Diagrams',
                 style: TextStyle(
                   fontSize: isSmallScreen ? 18 : 24,
                   fontWeight: FontWeight.bold,
@@ -1354,7 +1389,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
               ),
               SizedBox(height: isSmallScreen ? 8 : 12),
               Text(
-                'Enter your concept above and select a diagram type',
+                'Enter your concept above and select a diagram type\nto generate professional visualizations with AI',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: isSmallScreen ? 12 : 16,
@@ -1490,25 +1525,14 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
 
                 // Content Area
                 SliverToBoxAdapter(
-                  child: Builder(
-                    builder: (context) {
-                      print('Building main content area - isLoading: $_isLoading, generatedContents: ${_generatedContents.length}, currentVariations: ${_currentVariations.length}');
-                      
-                      if (_isLoading && _generatedContents.isEmpty) {
-                        print('Showing loading state');
-                        return _buildLoadingState();
-                      } else if (_generatedContents.isEmpty) {
-                        print('Showing empty state');
-                        return _buildEmptyState();
-                      } else if (_currentVariations.isNotEmpty) {
-                        print('Showing variations layout with ${_currentVariations.length} variations');
-                        return _buildVariationsLayout();
-                      } else {
-                        print('Showing content list');
-                        return _buildContentList();
-                      }
-                    },
-                  ),
+                  child:
+                      _isLoading && _generatedContents.isEmpty
+                          ? _buildLoadingState()
+                          : _generatedContents.isEmpty
+                          ? _buildEmptyState()
+                          : _currentVariations.isNotEmpty
+                          ? _buildVariationsLayout()
+                          : _buildContentList(),
                 ),
 
                 // Bottom padding

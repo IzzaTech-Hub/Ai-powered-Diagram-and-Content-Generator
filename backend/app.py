@@ -1446,13 +1446,13 @@ def generate_themed_mindmap_svg(central_topic, branches, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
+        '''
         <linearGradient id="mindmapGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
-        f'''
+        '''
         <filter id="mindmapShadow" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
             <feOffset dx="2" dy="4" result="offset"/>
@@ -1504,7 +1504,7 @@ def generate_themed_mindmap_svg(central_topic, branches, variation, theme):
         # Connection line
         svg_elements.append(
             f'<line x1="{center_x}" y1="{center_y}" x2="{x}" y2="{y}" '
-            f'stroke="{theme["accent"]}" stroke-width="3" opacity="0.6"/>'
+            'stroke="{theme["accent"]}" stroke-width="3" opacity="0.6"/>'
         )
 
     return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
@@ -1515,11 +1515,12 @@ def generate_themed_swot_svg(swot_data, variation, theme):
         return generate_error_svg("SWOT analysis requires data")
 
     width, height = 1400, 900
-    variation_style = variation.get('style', 'standard')
+    quadrant_width = width // 2
+    quadrant_height = height // 2
     
     svg_elements = [
         '<defs>',
-        f'''
+        '''
         <linearGradient id="swotGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
@@ -1532,6 +1533,10 @@ def generate_themed_swot_svg(swot_data, variation, theme):
         # Title
         f'<text x="{width//2}" y="40" font-family="Inter, sans-serif" '
         f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">{variation["name"]}</text>',
+        
+        # Grid lines
+        f'<line x1="{quadrant_width}" y1="80" x2="{quadrant_width}" y2="{height-50}" stroke="#9CA3AF" stroke-width="2"/>',
+        f'<line x1="50" y1="{quadrant_height+80}" x2="{width-50}" y2="{quadrant_height+80}" stroke="#9CA3AF" stroke-width="2"/>',
     ]
 
     # SWOT quadrants
@@ -1542,116 +1547,27 @@ def generate_themed_swot_svg(swot_data, variation, theme):
         {"title": "Threats", "x": 1, "y": 1, "color": "#F59E0B"}
     ]
     
-    if variation_style == 'standard':
-        # Traditional 2x2 grid layout
-        quadrant_width = width // 2
-        quadrant_height = height // 2
+    for quadrant in quadrants:
+        x = 50 + quadrant["x"] * quadrant_width
+        y = 100 + quadrant["y"] * quadrant_height
         
-        # Grid lines
+        # Quadrant title
         svg_elements.extend([
-            f'<line x1="{quadrant_width}" y1="80" x2="{quadrant_width}" y2="{height-50}" stroke="#9CA3AF" stroke-width="2"/>',
-            f'<line x1="50" y1="{quadrant_height+80}" x2="{width-50}" y2="{quadrant_height+80}" stroke="#9CA3AF" stroke-width="2"/>',
+            f'<text x="{x + quadrant_width//2}" y="{y+30}" font-family="Inter, sans-serif" '
+            f'font-size="20" font-weight="700" fill="{quadrant["color"]}" text-anchor="middle">{quadrant["title"]}</text>',
+            
+            f'<rect x="{x+20}" y="{y+40}" width="{quadrant_width-40}" height="{quadrant_height-60}" '
+            f'rx="8" fill="rgba({quadrant["color"]}, 0.1)" stroke="{quadrant["color"]}" stroke-width="1"/>',
         ])
         
-        for quadrant in quadrants:
-            x = 50 + quadrant["x"] * quadrant_width
-            y = 100 + quadrant["y"] * quadrant_height
-            
-            svg_elements.extend([
-                f'<text x="{x + quadrant_width//2}" y="{y+30}" font-family="Inter, sans-serif" '
-                f'font-size="20" font-weight="700" fill="{quadrant["color"]}" text-anchor="middle">{quadrant["title"]}</text>',
-                
-                f'<rect x="{x+20}" y="{y+40}" width="{quadrant_width-40}" height="{quadrant_height-60}" '
-                f'rx="8" fill="{quadrant["color"]}" fill-opacity="0.1" stroke="{quadrant["color"]}" stroke-width="1"/>',
-            ])
-            
-            # Add items
-            items = swot_data.get(quadrant["title"].lower(), [])
-            for i, item in enumerate(items[:5]):
-                item_y = y + 70 + i * 25
-                if item_y < y + quadrant_height - 20:
-                    svg_elements.append(
-                        f'<text x="{x+30}" y="{item_y}" font-family="Inter, sans-serif" '
-                        f'font-size="12" fill="#374151">• {str(item)[:30]}</text>'
-                    )
-    
-    elif variation_style == 'detailed':
-        # Vertical layout with detailed sections
-        section_height = (height - 150) // 4
-        
-        for i, quadrant in enumerate(quadrants):
-            y = 100 + i * section_height
-            
-            svg_elements.extend([
-                f'<rect x="50" y="{y}" width="{width-100}" height="{section_height-20}" '
-                f'rx="12" fill="{quadrant["color"]}" fill-opacity="0.1" stroke="{quadrant["color"]}" stroke-width="2"/>',
-                
-                f'<text x="80" y="{y+35}" font-family="Inter, sans-serif" '
-                f'font-size="24" font-weight="700" fill="{quadrant["color"]}">{quadrant["title"]}</text>',
-            ])
-            
-            # Add items with more detail
-            items = swot_data.get(quadrant["title"].lower(), [])
-            for j, item in enumerate(items[:6]):
-                item_x = 100 + (j % 2) * 600
-                item_y = y + 60 + (j // 2) * 30
-                if item_y < y + section_height - 30:
-                    svg_elements.append(
-                        f'<text x="{item_x}" y="{item_y}" font-family="Inter, sans-serif" '
-                        f'font-size="14" fill="#374151">• {str(item)[:50]}</text>'
-                    )
-    
-    elif variation_style == 'compact':
-        # Horizontal strip layout
-        strip_width = (width - 200) // 4
-        
-        for i, quadrant in enumerate(quadrants):
-            x = 50 + i * strip_width
-            
-            svg_elements.extend([
-                f'<rect x="{x}" y="100" width="{strip_width-20}" height="{height-200}" '
-                f'rx="8" fill="{quadrant["color"]}" fill-opacity="0.1" stroke="{quadrant["color"]}" stroke-width="1"/>',
-                
-                f'<text x="{x + strip_width//2}" y="130" font-family="Inter, sans-serif" '
-                f'font-size="16" font-weight="700" fill="{quadrant["color"]}" text-anchor="middle">{quadrant["title"]}</text>',
-            ])
-            
-            # Add compact items
-            items = swot_data.get(quadrant["title"].lower(), [])
-            for j, item in enumerate(items[:8]):
-                item_y = 150 + j * 20
-                if item_y < height - 120:
-                    svg_elements.append(
-                        f'<text x="{x+10}" y="{item_y}" font-family="Inter, sans-serif" '
-                        f'font-size="10" fill="#374151">• {str(item)[:20]}</text>'
-                    )
-    
-    else:  # enhanced
-        # Circular/radial layout
-        center_x, center_y = width // 2, height // 2
-        radius = min(width, height) * 0.25
-        
-        for i, quadrant in enumerate(quadrants):
-            angle = math.radians(i * 90)
-            x = center_x + radius * math.cos(angle)
-            y = center_y + radius * math.sin(angle)
-            
-            svg_elements.extend([
-                f'<circle cx="{x}" cy="{y}" r="150" fill="{quadrant["color"]}" fill-opacity="0.1" stroke="{quadrant["color"]}" stroke-width="3"/>',
-                
-                f'<text x="{x}" y="{y-20}" font-family="Inter, sans-serif" '
-                f'font-size="18" font-weight="700" fill="{quadrant["color"]}" text-anchor="middle">{quadrant["title"]}</text>',
-            ])
-            
-            # Add items in circular arrangement
-            items = swot_data.get(quadrant["title"].lower(), [])
-            for j, item in enumerate(items[:4]):
-                item_angle = angle + math.radians((j - 1.5) * 20)
-                item_x = x + 80 * math.cos(item_angle)
-                item_y = y + 80 * math.sin(item_angle)
+        # Add items from data
+        items = swot_data.get(quadrant["title"].lower(), [])
+        for i, item in enumerate(items[:5]):  # Limit to 5 items per quadrant
+            item_y = y + 70 + i * 25
+            if item_y < y + quadrant_height - 20:
                 svg_elements.append(
-                    f'<text x="{item_x}" y="{item_y}" font-family="Inter, sans-serif" '
-                    f'font-size="11" fill="#374151" text-anchor="middle">• {str(item)[:15]}</text>'
+                    f'<text x="{x+30}" y="{item_y}" font-family="Inter, sans-serif" '
+                    f'font-size="12" fill="#374151">• {str(item)[:30]}</text>'
                 )
 
     return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
@@ -1666,7 +1582,7 @@ def generate_themed_timeline_svg(events, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
+        '''
         <linearGradient id="timelineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
@@ -1705,7 +1621,7 @@ def generate_themed_timeline_svg(events, variation, theme):
             detail_y = y - 60
             svg_elements.extend([
                 f'<rect x="{x-80}" y="{detail_y-40}" width="160" height="80" '
-                f'rx="8" fill="#FFFFFF" stroke="{theme["primary"]}" stroke-width="2"/>',
+                'rx="8" fill="#FFFFFF" stroke="{theme["primary"]}" stroke-width="2"/>',
                 
                 f'<text x="{x}" y="{detail_y-20}" font-family="Inter, sans-serif" '
                 f'font-size="12" font-weight="700" fill="{theme["primary"]}" text-anchor="middle">{event_name[:20]}</text>',
@@ -1718,7 +1634,7 @@ def generate_themed_timeline_svg(events, variation, theme):
             detail_y = y + 60
             svg_elements.extend([
                 f'<rect x="{x-80}" y="{detail_y}" width="160" height="80" '
-                f'rx="8" fill="#FFFFFF" stroke="{theme["primary"]}" stroke-width="2"/>',
+                'rx="8" fill="#FFFFFF" stroke="{theme["primary"]}" stroke-width="2"/>',
                 
                 f'<text x="{x}" y="{detail_y+20}" font-family="Inter, sans-serif" '
                 f'font-size="12" font-weight="700" fill="{theme["primary"]}" text-anchor="middle">{event_name[:20]}</text>',
@@ -1745,13 +1661,13 @@ def generate_themed_sequence_svg(actors, interactions, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
+        '''
         <linearGradient id="actorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
-        f'''
+        '''
         <marker id="seqArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="{theme['accent']}"/>
         </marker>
@@ -1801,7 +1717,7 @@ def generate_themed_sequence_svg(actors, interactions, variation, theme):
             
             svg_elements.extend([
                 f'<line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}" '
-                f'stroke="{theme["accent"]}" stroke-width="2" marker-end="url(#seqArrow)"/>',
+                'stroke="{theme["accent"]}" stroke-width="2" marker-end="url(#seqArrow)"/>',
                 
                 f'<text x="{(x1+x2)/2}" y="{y-10}" font-family="Inter, sans-serif" '
                 f'font-size="12" fill="#374151" text-anchor="middle">{message[:30]}</text>'
@@ -1826,13 +1742,13 @@ def generate_themed_state_svg(states, transitions, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
+        '''
         <linearGradient id="stateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
-        f'''
+        '''
         <marker id="stateArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="{theme['accent']}"/>
         </marker>
@@ -1884,7 +1800,7 @@ def generate_themed_state_svg(states, transitions, variation, theme):
                 
                 svg_elements.extend([
                     f'<line x1="{start_x}" y1="{start_y}" x2="{end_x}" y2="{end_y}" '
-                    f'stroke="{theme["accent"]}" stroke-width="2" marker-end="url(#stateArrow)"/>',
+                    'stroke="{theme["accent"]}" stroke-width="2" marker-end="url(#stateArrow)"/>',
                     
                     f'<text x="{(start_x+end_x)/2}" y="{(start_y+end_y)/2-10}" font-family="Inter, sans-serif" '
                     f'font-size="10" fill="#374151" text-anchor="middle">{trigger[:15]}</text>'
@@ -1910,19 +1826,19 @@ def generate_themed_class_svg(classes, variation, theme):
     svg_elements = [
         '<defs>',
         # Class box gradient
-        f'''
+        '''
         <linearGradient id="classGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
         # Inheritance arrow
-        f'''
+        '''
         <marker id="inheritanceArrow" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
             <polygon points="0,0 12,6 0,12 6,6" fill="#1F2937" opacity="0.8"/>
         </marker>
         ''',
-        f'''
+        '''
         <filter id="premiumShadow" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
             <feOffset dx="2" dy="4" result="offset"/>
@@ -2039,25 +1955,25 @@ def generate_themed_erd_svg(entities, variation, theme):
     svg_elements = [
         '<defs>',
         # Premium gradients for different entity types
-        f'''
+        '''
         <linearGradient id="entityGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
-        f'''
+        '''
         <linearGradient id="relationshipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['secondary']};stop-opacity:0.9" />
             <stop offset="100%" style="stop-color:{theme['accent']};stop-opacity:1" />
         </linearGradient>
         ''',
         # Arrow marker for relationships
-        f'''
+        '''
         <marker id="erdArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="{theme['accent']}"/>
         </marker>
         ''',
-        f'''
+        '''
         <filter id="premiumShadow" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
             <feOffset dx="2" dy="4" result="offset"/>
@@ -2149,13 +2065,13 @@ def generate_themed_network_svg(nodes, connections, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
+        '''
         <linearGradient id="networkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
-        f'''
+        '''
         <filter id="networkShadow" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
             <feOffset dx="2" dy="4" result="offset"/>
@@ -2164,7 +2080,7 @@ def generate_themed_network_svg(nodes, connections, variation, theme):
             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
         ''',
-        f'''
+        '''
         <marker id="networkArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="{theme['accent']}"/>
         </marker>
@@ -2179,102 +2095,30 @@ def generate_themed_network_svg(nodes, connections, variation, theme):
         f'font-size="16" fill="#6B7280" text-anchor="middle">System connectivity and data flow</text>',
     ]
 
-    # Different layouts based on variation style
-    variation_style = variation.get('style', 'standard')
+    # Position nodes in a circular layout
     node_positions = {}
+    radius = min(width, height) * 0.35
+    angle_step = 360 / max(len(nodes), 1)
     
-    if variation_style == 'standard':
-        # Circular layout - standard approach
-        radius = min(width, height) * 0.35
-        angle_step = 360 / max(len(nodes), 1)
+    for i, (node_name, node_type) in enumerate(nodes.items()):
+        angle = math.radians(i * angle_step)
+        x = center_x + radius * math.cos(angle)
+        y = center_y + radius * math.sin(angle)
+        node_positions[node_name] = (x, y)
         
-        for i, (node_name, node_type) in enumerate(nodes.items()):
-            angle = math.radians(i * angle_step)
-            x = center_x + radius * math.cos(angle)
-            y = center_y + radius * math.sin(angle)
-            node_positions[node_name] = (x, y)
-            
-    elif variation_style == 'detailed':
-        # Hierarchical layout with layers - more detailed structure
-        layers = []
-        node_list = list(nodes.items())
-        layer_size = max(2, len(node_list) // 3)
-        
-        for i in range(0, len(node_list), layer_size):
-            layers.append(node_list[i:i + layer_size])
-        
-        layer_height = (height - 200) // max(len(layers), 1)
-        
-        for layer_idx, layer in enumerate(layers):
-            y = 120 + layer_idx * layer_height
-            layer_width = (width - 200) // max(len(layer), 1)
-            
-            for node_idx, (node_name, node_type) in enumerate(layer):
-                x = 100 + node_idx * layer_width + layer_width // 2
-                node_positions[node_name] = (x, y)
-    
-    elif variation_style == 'compact':
-        # Grid layout - compact arrangement
-        grid_size = math.ceil(math.sqrt(len(nodes)))
-        cell_width = (width - 200) // grid_size
-        cell_height = (height - 200) // grid_size
-        
-        for i, (node_name, node_type) in enumerate(nodes.items()):
-            row = i // grid_size
-            col = i % grid_size
-            x = 100 + col * cell_width + cell_width // 2
-            y = 120 + row * cell_height + cell_height // 2
-            node_positions[node_name] = (x, y)
-            
-    else:  # enhanced
-        # Hub and spoke layout - enhanced visual emphasis
-        hub_nodes = list(nodes.items())[:2]  # Main hubs
-        spoke_nodes = list(nodes.items())[2:]
-        
-        # Position hubs
-        for i, (node_name, node_type) in enumerate(hub_nodes):
-            x = center_x + (i - 0.5) * 300
-            y = center_y
-            node_positions[node_name] = (x, y)
-        
-        # Position spokes around hubs
-        for i, (node_name, node_type) in enumerate(spoke_nodes):
-            hub_idx = i % len(hub_nodes)
-            hub_x, hub_y = node_positions[hub_nodes[hub_idx][0]]
-            
-            angle = math.radians((i // len(hub_nodes)) * (360 // max(len(spoke_nodes) // len(hub_nodes), 1)))
-            radius = 200
-            x = hub_x + radius * math.cos(angle)
-            y = hub_y + radius * math.sin(angle)
-            node_positions[node_name] = (x, y)
-
-    # Draw all nodes based on variation style
-    for node_name, node_type in nodes.items():
-        x, y = node_positions[node_name]
-        
-        # Node styling based on variation and type
-        if variation_style == 'detailed':
-            node_size = 100
-            font_size = 16
-        elif variation_style == 'compact':
-            node_size = 50
-            font_size = 10
-        elif variation_style == 'enhanced':
-            node_size = 90 if "server" in node_type.lower() else 70
-            font_size = 14
-        else:  # standard
-            node_size = 70
-            font_size = 12
+        # Node styling based on type
+        node_color = "#1E3A8A" if "server" in node_type.lower() else "#3B82F6"
+        node_size = 80 if "server" in node_type.lower() else 60
         
         svg_elements.extend([
             f'<rect x="{x-node_size//2}" y="{y-node_size//2}" width="{node_size}" height="{node_size}" '
             f'rx="12" fill="url(#networkGrad)" filter="url(#networkShadow)" stroke="#FFFFFF" stroke-width="2"/>',
             
-            f'<text x="{x}" y="{y-5}" font-family="Inter, sans-serif" '
-            f'font-size="{font_size}" font-weight="700" fill="#FFFFFF" text-anchor="middle">{node_name[:12]}</text>',
+            f'<text x="{x}" y="{y-10}" font-family="Inter, sans-serif" '
+            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{node_name[:12]}</text>',
             
-            f'<text x="{x}" y="{y+12}" font-family="Inter, sans-serif" '
-            f'font-size="{font_size-2}" fill="#E5E7EB" text-anchor="middle">{node_type[:15]}</text>',
+            f'<text x="{x}" y="{y+8}" font-family="Inter, sans-serif" '
+            f'font-size="11" fill="#E5E7EB" text-anchor="middle">{node_type[:15]}</text>',
         ])
 
     # Draw connections
@@ -2289,7 +2133,7 @@ def generate_themed_network_svg(nodes, connections, variation, theme):
             
             svg_elements.extend([
                 f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
-                f'stroke="{theme["accent"]}" stroke-width="3" marker-end="url(#networkArrow)"/>',
+                'stroke="{theme["accent"]}" stroke-width="3" marker-end="url(#networkArrow)"/>',
                 
                 f'<text x="{(x1+x2)/2}" y="{(y1+y2)/2-10}" font-family="Inter, sans-serif" '
                 f'font-size="12" fill="#374151" text-anchor="middle">{label[:20]}</text>'
@@ -2306,13 +2150,13 @@ def generate_themed_architecture_svg(components, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
+        '''
         <linearGradient id="archGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
-        f'''
+        '''
         <filter id="archShadow" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
             <feOffset dx="2" dy="4" result="offset"/>
@@ -2411,7 +2255,7 @@ def generate_themed_gantt_svg(tasks, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
+        '''
         <linearGradient id="ganttGrad" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
@@ -2482,7 +2326,7 @@ def generate_themed_journey_svg(stages, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
+        '''
         <linearGradient id="journeyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
@@ -2555,7 +2399,7 @@ def generate_themed_flowchart_svg(steps, variation, theme):
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
-        f'''
+        '''
         <filter id="flowchartShadow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
             <feOffset dx="3" dy="8" result="offset"/>
@@ -2564,7 +2408,7 @@ def generate_themed_flowchart_svg(steps, variation, theme):
             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
         ''',
-        f'''
+        '''
         <marker id="flowchartArrow" markerWidth="16" markerHeight="12" refX="15" refY="6" orient="auto">
             <polygon points="0 0, 16 6, 0 12" fill="#4a5568" opacity="0.8"/>
         </marker>

@@ -39,17 +39,6 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
   }
 
   @override
-  void didUpdateWidget(SimpleDiagramViewer oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Update the SVG content when the widget is updated with new content
-    if (oldWidget.generatedContent.content != widget.generatedContent.content) {
-      setState(() {
-        _currentSvg = widget.generatedContent.content;
-      });
-    }
-  }
-
-  @override
   void dispose() {
     _transformationController.dispose();
     super.dispose();

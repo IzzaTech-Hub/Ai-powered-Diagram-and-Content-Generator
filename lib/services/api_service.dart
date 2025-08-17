@@ -8,16 +8,17 @@ import '../models/napkin_template.dart';
 import '../widgets/mind_map_template_selector.dart';
 
 class ApiService {
-  // Development URLs first for local testing, then production as fallback
+  // Production and development URLs to try
   static final List<String> _possibleUrls = [
-    'http://127.0.0.1:5000', // Local development - prioritize local
+    'https://diagramgenerator-hj9d.onrender.com', // Production backend - prioritize production
+    'http://127.0.0.1:5000', // Local development
     'http://localhost:5000', // Local development
     'http://192.168.100.7:5000', // Network IP from current logs
     'http://10.0.2.2:5000', // Android emulator
-    'https://diagramgenerator-hj9d.onrender.com', // Production backend as fallback
   ];
 
-  static String _baseUrl = 'http://127.0.0.1:5000'; // Local development first
+  static String _baseUrl =
+      'https://diagramgenerator-hj9d.onrender.com'; // Production backend first
 
   // Initialize API service
   static void initialize() {
@@ -59,28 +60,33 @@ class ApiService {
         return true;
       } else {
         print('Backend health check returned status: ${response.statusCode}');
+        // Try to find working backend
+        final workingUrl = await findWorkingBackend();
+        return workingUrl != null;
       }
     } catch (e) {
-      print('Backend health check failed at $_baseUrl: $e');
-    }
-    
-    // If current URL fails, try to find working backend
-    print('Trying to find alternative working backend...');
-    final workingUrl = await findWorkingBackend();
-    if (workingUrl != null) {
-      print('Found working backend at: $workingUrl');
-      return true;
-    }
+      print('Backend health check failed: $e');
+      
+      // Provide specific guidance based on error type
+      if (e.toString().contains('Connection refused') || e.toString().contains('Failed host lookup')) {
+        print('Local backend server is not running. To start it:');
+        print('1. Open terminal and navigate to backend/ directory');
+        print('2. Run: pip install -r requirements.txt');
+        print('3. Set GROQ_API_KEY environment variable');
+        print('4. Run: python app.py');
+      } else if (e.toString().contains('timeout')) {
+        print('Backend request timed out. The server might be overloaded.');
+      }
+      
+      // Try to find working backend
+      final workingUrl = await findWorkingBackend();
+      if (workingUrl != null) {
+        print('Found alternative backend at: $workingUrl');
+        return true;
+      }
 
-    // Provide specific guidance based on error type
-    print('No working backend found. Local backend server might not be running.');
-    print('To start it:');
-    print('1. Open terminal and navigate to backend/ directory');
-    print('2. Run: pip install -r requirements.txt');
-    print('3. Set GROQ_API_KEY environment variable (optional)');
-    print('4. Run: python app.py');
-    
-    return false;
+      return false;
+    }
   }
 
   Future<List<MindMapTemplate>> getMindMapTemplates() async {
@@ -358,11 +364,6 @@ class ApiService {
     required String userInput,
     required String diagramType,
   }) async {
-    print('Attempting to generate diagram variations...');
-    print('URL: $_baseUrl/generate_diagram_variations');
-    print('User Input: $userInput');
-    print('Diagram Type: $diagramType');
-    
     try {
       final response = await http
           .post(
@@ -375,35 +376,13 @@ class ApiService {
           )
           .timeout(const Duration(seconds: 180));
 
-      print('Response status code: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-        print('Successfully generated diagram variations');
         return responseData;
       } else {
-        print('Error response: ${response.statusCode} - ${response.body}');
         throw Exception('Error from backend: ${response.statusCode}');
       }
     } catch (e) {
-      print('Connection error in generateDiagramVariations: $e');
-      
-      // Try to find working backend if current one fails
-      if (e.toString().contains('Connection refused') || 
-          e.toString().contains('Failed host lookup') ||
-          e.toString().contains('Connection closed')) {
-        print('Attempting to find alternative backend...');
-        final workingUrl = await findWorkingBackend();
-        if (workingUrl != null && workingUrl != _baseUrl) {
-          print('Retrying with working backend: $workingUrl');
-          return generateDiagramVariations(
-            userInput: userInput,
-            diagramType: diagramType,
-          );
-        }
-      }
-      
       throw Exception('Connection error: $e');
     }
   }
