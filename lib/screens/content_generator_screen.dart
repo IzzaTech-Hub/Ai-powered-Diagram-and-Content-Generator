@@ -1,9 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:my_flutter_app/screens/login_screen.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../models/generated_content.dart';
 import '../models/napkin_template.dart';
 import '../services/api_service.dart';
@@ -30,7 +28,6 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
   // Enhanced diagram properties
   NapkinTemplate? _selectedDiagramTemplate;
   List<NapkinTemplate> _diagramTemplates = [];
-  String _selectedDiagramType = 'flowchart';
 
   // Variation state management
   List<GeneratedContent> _currentVariations = [];
@@ -208,7 +205,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
 
     if (_diagramTemplates.isNotEmpty && _selectedDiagramTemplate == null) {
       _selectedDiagramTemplate = _diagramTemplates.first;
-      _selectedDiagramType = _selectedDiagramTemplate!.napkinType;
+      _selectedDiagramTemplate = _diagramTemplates.first;
     }
   }
 
@@ -323,35 +320,18 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
     _loadingController.repeat();
 
     try {
-      // Generate 4 variations using the new endpoint
-      final response = await _apiService.generateDiagramVariations(
+      print('🎨 Generating diagram: ${_selectedDiagramTemplate!.napkinType}');
+      print('📝 User input: ${_inputController.text}');
+      
+      // Use the working generate_napkin_diagram endpoint
+      final generatedContent = await _apiService.generateNapkinDiagram(
         userInput: _inputController.text,
-        diagramType: _selectedDiagramType,
+        napkinTemplate: _selectedDiagramTemplate!,
       );
       
-      final variations = response['variations'] as List<dynamic>;
-      
-      // Ensure we have exactly 4 variations
-      if (variations.length < 4) {
-        throw Exception('Expected 4 diagram variations, but received ${variations.length}');
-      }
-      
-      // Convert to GeneratedContent objects with enhanced naming
-      final List<GeneratedContent> diagramVariations = variations.take(4).map((variation) {
-        final variationStyle = variation['variation'] ?? 'standard';
-        final colorTheme = variation['colorTheme'] ?? 'blue';
-        
-        return GeneratedContent(
-          templateName: _getVariationDisplayName(variationStyle, _selectedDiagramTemplate!.name),
-          content: variation['content'] ?? '',
-          isDiagram: true,
-          timestamp: DateTime.parse(
-            variation['timestamp'] ?? DateTime.now().toIso8601String(),
-          ),
-          originalPrompt: _inputController.text,
-          diagramType: variationStyle,
-        );
-      }).toList();
+      print('✅ Diagram generated successfully!');
+      print('📊 Content type: ${generatedContent.isDiagram ? 'SVG Diagram' : 'Text'}');
+      print('📏 Content length: ${generatedContent.content.length} chars');
 
       setState(() {
         // Remove any existing diagrams of the same type
@@ -359,20 +339,21 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
           (content) => content.isDiagram && content.templateName.contains(_selectedDiagramTemplate!.name),
         );
 
-        // Add all the new variations
-        _generatedContents.addAll(diagramVariations);
+        // Add the new diagram
+        _generatedContents.add(generatedContent);
         
         // Update variation state
-        _currentVariations = diagramVariations;
-        _selectedVariation = diagramVariations.isNotEmpty ? diagramVariations.first : null;
+        _currentVariations = [generatedContent];
+        _selectedVariation = generatedContent;
         _hoveredVariation = null;
       });
 
       ErrorHandler.showSuccessSnackBar(
         context,
-        '🎉 Generated ${diagramVariations.length} ${_selectedDiagramTemplate!.name} variations!',
+        '🎉 Generated ${_selectedDiagramTemplate!.name} successfully!',
       );
     } catch (e) {
+      print('💥 Error generating diagram: ${e.toString()}');
       final friendlyMessage = ErrorHandler.getFriendlyErrorMessage(
         e.toString(),
       );
@@ -408,7 +389,6 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
     if (template != null) {
       setState(() {
         _selectedDiagramTemplate = template;
-        _selectedDiagramType = template.napkinType;
       });
       // Provide haptic feedback
       HapticFeedback.selectionClick();

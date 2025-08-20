@@ -1,0 +1,18 @@
+# Railway ignore file
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.vscode/
+.git/
+*.log
+test_*.py
+README.md
+fix_production.md
+.DS_Store
+Thumbs.db

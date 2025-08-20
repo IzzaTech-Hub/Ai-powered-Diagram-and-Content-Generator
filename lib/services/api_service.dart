@@ -8,84 +8,127 @@ import '../models/napkin_template.dart';
 import '../widgets/mind_map_template_selector.dart';
 
 class ApiService {
-  // Production and development URLs to try
+  // Backend URLs prioritized for production APK distribution
   static final List<String> _possibleUrls = [
-    'https://diagramgenerator-hj9d.onrender.com', // Production backend - prioritize production
-    'http://127.0.0.1:5000', // Local development
-    'http://localhost:5000', // Local development
-    'http://192.168.100.7:5000', // Network IP from current logs
-    'http://10.0.2.2:5000', // Android emulator
+    'https://diagramgenerator-hj9d.onrender.com', // Production - REQUIRED for APK
+    'https://your-app.railway.app', // Alternative production
+    'http://127.0.0.1:5000', // Local development only
+    'http://10.0.2.2:5000', // Android emulator only
+    'http://localhost:5000', // Local development alternative
   ];
 
   static String _baseUrl =
-      'https://diagramgenerator-hj9d.onrender.com'; // Production backend first
+      'https://diagramgenerator-hj9d.onrender.com'; // Production first for APK
 
-  // Initialize API service
+  // Initialize API service with connection test
   static void initialize() {
-    print('API Service initialized with endpoint: $_baseUrl');
+    print('🚀 API Service initialized with endpoint: $_baseUrl');
+    print('🔍 Testing connection...');
+    
+    // Test connection in background
+    _testConnectionInBackground();
+  }
+  
+  static void _testConnectionInBackground() async {
+    try {
+      final response = await http
+          .get(Uri.parse('$_baseUrl/health'))
+          .timeout(const Duration(seconds: 5));
+          
+      if (response.statusCode == 200) {
+        final healthData = json.decode(response.body);
+        print('✅ Connected to backend successfully');
+        print('🤖 AI service status: ${healthData['groq_client']}');
+      } else {
+        print('⚠️ Backend responded with status: ${response.statusCode}');
+        findWorkingBackend();
+      }
+    } catch (e) {
+      print('🔄 Initial connection failed, will try alternatives when needed');
+      print('💡 Error: ${e.toString().substring(0, 100)}...');
+    }
   }
 
   // Get the current base URL
   static String get baseUrl => _baseUrl;
 
-  // Find working backend URL
+  // Find working backend URL with better error handling
   static Future<String?> findWorkingBackend() async {
+    print('🔍 Searching for working backend...');
+    
     for (String url in _possibleUrls) {
       try {
+        print('🔗 Trying: $url');
         final response = await http
             .get(Uri.parse('$url/health'))
-            .timeout(const Duration(seconds: 3));
+            .timeout(const Duration(seconds: 5));
 
         if (response.statusCode == 200) {
-          print('Found working backend at: $url');
+          final healthData = json.decode(response.body);
+          print('✅ Found working backend at: $url');
+          print('📊 Server status: ${healthData['status']}');
+          print('🤖 AI service: ${healthData['groq_client']}');
           _baseUrl = url;
           return url;
+        } else {
+          print('❌ $url returned status: ${response.statusCode}');
         }
       } catch (e) {
-        print('Failed to connect to $url: $e');
+        print('💥 Failed to connect to $url: ${e.toString().substring(0, 100)}...');
       }
     }
+    
+    print('🔴 No working backend found!');
     return null;
   }
 
   Future<bool> checkBackendHealth() async {
+    print('🏥 Checking backend health at: $_baseUrl');
+    
     try {
       // First try current URL
       final response = await http
           .get(Uri.parse('$_baseUrl/health'))
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
-        print('Backend health check successful at $_baseUrl');
+        final healthData = json.decode(response.body);
+        print('✅ Backend health check successful at $_baseUrl');
+        print('📊 Status: ${healthData['status']}');
+        print('🤖 AI service: ${healthData['groq_client']}');
+        print('⏰ Server time: ${healthData['timestamp']}');
         return true;
       } else {
-        print('Backend health check returned status: ${response.statusCode}');
+        print('⚠️ Backend health check returned status: ${response.statusCode}');
         // Try to find working backend
         final workingUrl = await findWorkingBackend();
         return workingUrl != null;
       }
     } catch (e) {
-      print('Backend health check failed: $e');
+      print('💥 Backend health check failed: ${e.toString()}');
       
       // Provide specific guidance based on error type
-      if (e.toString().contains('Connection refused') || e.toString().contains('Failed host lookup')) {
-        print('Local backend server is not running. To start it:');
-        print('1. Open terminal and navigate to backend/ directory');
-        print('2. Run: pip install -r requirements.txt');
-        print('3. Set GROQ_API_KEY environment variable');
-        print('4. Run: python app.py');
+      if (e.toString().contains('Connection refused') || 
+          e.toString().contains('Failed host lookup') ||
+          e.toString().contains('SocketException')) {
+        print('🔌 Network connection issue detected');
+        print('💡 Trying alternative backends...');
       } else if (e.toString().contains('timeout')) {
-        print('Backend request timed out. The server might be overloaded.');
+        print('⏰ Backend request timed out - server might be overloaded');
+        print('💡 Trying alternative backends...');
+      } else {
+        print('🔧 Unknown connection error: ${e.toString()}');
       }
       
       // Try to find working backend
       final workingUrl = await findWorkingBackend();
       if (workingUrl != null) {
-        print('Found alternative backend at: $workingUrl');
+        print('🎯 Successfully switched to alternative backend: $workingUrl');
         return true;
+      } else {
+        print('🔴 All backends are unreachable');
+        return false;
       }
-
-      return false;
     }
   }
 
@@ -241,26 +284,75 @@ class ApiService {
     required String userInput,
     required NapkinTemplate napkinTemplate,
   }) async {
+    print('🎨 Generating diagram: ${napkinTemplate.napkinType} for "$userInput"');
+    print('🔗 Using backend: $_baseUrl');
+    
     try {
+      final requestData = {
+        'userInput': userInput,
+        'napkinTemplate': napkinTemplate.toJson(),
+      };
+      
+      print('📤 Sending request to: $_baseUrl/generate_napkin_diagram');
+      print('📊 Request payload: ${json.encode(requestData).substring(0, 100)}...');
+      
       final response = await http
           .post(
             Uri.parse('$_baseUrl/generate_napkin_diagram'),
-            headers: {'Content-Type': 'application/json'},
-            body: json.encode({
-              'userInput': userInput,
-              'napkinTemplate': napkinTemplate.toJson(),
-            }),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: json.encode(requestData),
           )
           .timeout(const Duration(seconds: 120));
 
+      print('📥 Response status: ${response.statusCode}');
+      print('📏 Response size: ${response.body.length} chars');
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+        print('✅ Diagram generated successfully');
+        print('🎯 Content type: ${responseData['isDiagram'] ? 'SVG Diagram' : 'Text Content'}');
         return GeneratedContent.fromJson(responseData);
       } else {
-        throw Exception('Error from backend: ${response.statusCode}');
+        print('❌ Backend error: ${response.statusCode}');
+        print('📄 Error response: ${response.body.substring(0, 200)}...');
+        
+        // Try alternative backend
+        print('🔄 Trying alternative backend...');
+        final workingUrl = await findWorkingBackend();
+        if (workingUrl != null && workingUrl != _baseUrl) {
+          print('🎯 Retrying with: $workingUrl');
+          return generateNapkinDiagram(
+            userInput: userInput,
+            napkinTemplate: napkinTemplate,
+          );
+        }
+        
+        throw Exception('Backend error: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      throw Exception('Connection error: $e');
+      print('💥 Connection error: ${e.toString()}');
+      
+      if (e.toString().contains('Backend error')) {
+        rethrow; // Re-throw backend errors
+      }
+      
+      // Try alternative backend for connection errors
+      if (!e.toString().contains('Retrying with')) {
+        print('🔄 Trying alternative backend due to connection error...');
+        final workingUrl = await findWorkingBackend();
+        if (workingUrl != null && workingUrl != _baseUrl) {
+          print('🎯 Retrying with: $workingUrl');
+          return generateNapkinDiagram(
+            userInput: userInput,
+            napkinTemplate: napkinTemplate,
+          );
+        }
+      }
+      
+      throw Exception('Unable to connect to diagram generation service. Please check your internet connection and try again.');
     }
   }
 

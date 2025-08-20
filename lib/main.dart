@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:my_flutter_app/screens/login_screen.dart';
+import 'package:my_flutter_app/widgets/connection_test_widget.dart';
 import 'screens/content_generator_screen.dart';
 import 'screens/document_generator_screen.dart';
 import 'constants/app_theme.dart';
@@ -72,6 +73,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       appBar: AppBar(
         title: const Text('AI Content Generator Pro'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.network_check),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ConnectionTestWidget(),
+                ),
+              );
+            },
+            tooltip: 'Test Connection',
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
