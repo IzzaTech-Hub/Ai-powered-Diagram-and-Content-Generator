@@ -44,14 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Environment variables and secrets
-.env
-.env.local
-.env.production
-.env.development
-*.env
-backend/.env*
-backend/env_*
 
 # Backend logs and temporary files
 backend/ai_backend.log
