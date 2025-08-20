@@ -1,8 +1,9 @@
+from flask import Flask, request, jsonify
 # Root route for health check and Vercel base URL
+app = Flask(__name__)
 @app.route("/")
 def index():
     return "Backend is running!"
-from flask import Flask, request, jsonify
 from flask_cors import CORS
 import socket
 import json
