@@ -10,12 +10,13 @@ import '../widgets/mind_map_template_selector.dart';
 class ApiService {
   // Backend URLs prioritized for production APK distribution
   static final List<String> _possibleUrls = [
-    'https://diagramgenerator-hj9d.onrender.com', // Production - REQUIRED for APK
+    'https://ai-powered-diagram-and-content-gene-pi.vercel.app/', // Production - REQUIRED for APK
     'https://your-app.railway.app', // Alternative production
     'http://127.0.0.1:5000', // Local development only
     'http://10.0.2.2:5000', // Android emulator only
     'http://localhost:5000', // Local development alternative
   ];
+
 
   static String _baseUrl =
       'https://diagramgenerator-hj9d.onrender.com'; // Production first for APK
