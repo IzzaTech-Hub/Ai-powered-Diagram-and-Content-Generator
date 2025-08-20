@@ -1,3 +1,7 @@
+# Root route for health check and Vercel base URL
+@app.route("/")
+def index():
+    return "Backend is running!"
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import socket
@@ -21,9 +25,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 app = Flask(__name__)
 # Enhanced CORS configuration for Flutter mobile and web
 CORS(app, origins=['*'], supports_credentials=True, allow_headers=['Content-Type', 'Authorization'])
+
+# Root route for health check and Vercel base URL
+@app.route("/")
+def index():
+    return "Backend is running!"
 
 # Initialize Groq client with enhanced error handling
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
