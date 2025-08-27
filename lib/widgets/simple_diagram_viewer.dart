@@ -10,12 +10,32 @@ import 'dart:io';
 import 'dart:convert';
 
 /// Normalizes SVG colors to 6-digit hex format for Flutter SVG compatibility
-/// Handles #RGB, #RRGGBB, rgb(r,g,b), and other color formats
+/// Handles #RGB, #RRGGBB, rgb(r,g,b), rgba(#hex,alpha), and other color formats
 String normalizeSvgColors(String svg) {
   if (svg.isEmpty) return svg;
   
   try {
     String normalized = svg;
+    
+    // 0. Fix problematic rgba(#hex,alpha) patterns that Flutter SVG can't handle
+    // Convert rgba(#10B981, 0.1) to rgba(16, 185, 129, 0.1)
+    final rgbaHexRegex = RegExp(r'rgba\(#([0-9A-Fa-f]{6}),\s*([0-9.]+)\)');
+    normalized = normalized.replaceAllMapped(rgbaHexRegex, (match) {
+      try {
+        String hexColor = '#${match.group(1)}';
+        String alpha = match.group(2)!;
+        
+        // Convert hex to RGB values
+        int r = int.parse(hexColor.substring(1, 3), radix: 16);
+        int g = int.parse(hexColor.substring(3, 5), radix: 16);
+        int b = int.parse(hexColor.substring(5, 7), radix: 16);
+        
+        return 'rgba($r, $g, $b, $alpha)';
+      } catch (e) {
+        print('💥 Error converting rgba hex: $e');
+        return 'rgba(107, 114, 128, 0.1)'; // Safe fallback
+      }
+    });
     
     // 1. Convert rgb(r,g,b) format to hex
     final rgbRegex = RegExp(r'rgb\((\d+),\s*(\d+),\s*(\d+)\)');
