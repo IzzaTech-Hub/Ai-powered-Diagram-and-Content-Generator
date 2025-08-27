@@ -4,6 +4,138 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../models/generated_content.dart';
 import '../models/napkin_template.dart';
 import '../screens/diagram_editing_screen.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'dart:convert';
+
+/// Normalizes SVG colors to 6-digit hex format for Flutter SVG compatibility
+/// Handles #RGB, #RRGGBB, rgb(r,g,b), and other color formats
+String normalizeSvgColors(String svg) {
+  if (svg.isEmpty) return svg;
+  
+  try {
+    String normalized = svg;
+    
+    // 1. Convert rgb(r,g,b) format to hex
+    final rgbRegex = RegExp(r'rgb\((\d+),\s*(\d+),\s*(\d+)\)');
+    normalized = normalized.replaceAllMapped(rgbRegex, (match) {
+      try {
+        int r = int.parse(match.group(1)!);
+        int g = int.parse(match.group(2)!);
+        int b = int.parse(match.group(3)!);
+        
+        // Ensure values are in valid range
+        r = r.clamp(0, 255);
+        g = g.clamp(0, 255);
+        b = b.clamp(0, 255);
+        
+        String hex = '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}';
+        return hex.toUpperCase();
+      } catch (e) {
+        print('💥 Error parsing RGB values: $e');
+        return '#6B7280'; // Safe fallback
+      }
+    });
+    
+    // 2. Convert 3-digit hex (#RGB) to 6-digit hex (#RRGGBB)
+    final shortHexRegex = RegExp(r'#([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])(?![0-9A-Fa-f])');
+    normalized = normalized.replaceAllMapped(shortHexRegex, (match) {
+      try {
+        String r = match.group(1)!;
+        String g = match.group(2)!;
+        String b = match.group(3)!;
+        
+        // Duplicate each character: #RGB -> #RRGGBB
+        String longHex = '#$r$r$g$g$b$b';
+        return longHex.toUpperCase();
+      } catch (e) {
+        print('💥 Error converting short hex: $e');
+        return '#6B7280'; // Safe fallback
+      }
+    });
+    
+    // 3. Ensure all 6-digit hex colors are uppercase and valid
+    final hexRegex = RegExp(r'#([0-9A-Fa-f]{6})');
+    normalized = normalized.replaceAllMapped(hexRegex, (match) {
+      try {
+        String hex = match.group(1)!;
+        // Validate hex and convert to uppercase
+        if (RegExp(r'^[0-9A-Fa-f]{6}$').hasMatch(hex)) {
+          return '#${hex.toUpperCase()}';
+        } else {
+          print('⚠️ Invalid hex color found: #$hex');
+          return '#6B7280'; // Safe fallback
+        }
+      } catch (e) {
+        print('💥 Error processing hex color: $e');
+        return '#6B7280'; // Safe fallback
+      }
+    });
+    
+    // 4. Handle fill and stroke attributes specifically
+    // Convert rgb() in fill attributes
+    normalized = normalized.replaceAllMapped(RegExp(r'fill="([^"]*)"'), (match) {
+      String value = match.group(1)!;
+      if (value.startsWith('rgb(')) {
+        // Convert rgb to hex
+        final rgbMatch = RegExp(r'rgb\((\d+),\s*(\d+),\s*(\d+)\)').firstMatch(value);
+        if (rgbMatch != null) {
+          try {
+            int r = int.parse(rgbMatch.group(1)!);
+            int g = int.parse(rgbMatch.group(2)!);
+            int b = int.parse(rgbMatch.group(3)!);
+            
+            r = r.clamp(0, 255);
+            g = g.clamp(0, 255);
+            b = b.clamp(0, 255);
+            
+            String hex = '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}';
+            return 'fill="${hex.toUpperCase()}"';
+          } catch (e) {
+            print('💥 Error converting fill RGB: $e');
+            return 'fill="#6B7280"';
+          }
+        }
+      }
+      return match.group(0)!;
+    });
+    
+    // Convert rgb() in stroke attributes
+    normalized = normalized.replaceAllMapped(RegExp(r'stroke="([^"]*)"'), (match) {
+      String value = match.group(1)!;
+      if (value.startsWith('rgb(')) {
+        // Convert rgb to hex
+        final rgbMatch = RegExp(r'rgb\((\d+),\s*(\d+),\s*(\d+)\)').firstMatch(value);
+        if (rgbMatch != null) {
+          try {
+            int r = int.parse(rgbMatch.group(1)!);
+            int g = int.parse(rgbMatch.group(2)!);
+            int b = int.parse(rgbMatch.group(3)!);
+            
+            r = r.clamp(0, 255);
+            g = g.clamp(0, 255);
+            b = b.clamp(0, 255);
+            
+            String hex = '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}';
+            return 'stroke="${hex.toUpperCase()}"';
+          } catch (e) {
+            print('💥 Error converting stroke RGB: $e');
+            return 'stroke="#374151"';
+          }
+        }
+      }
+      return match.group(0)!;
+    });
+    
+    print('🔧 SVG colors normalized: ${svg.length} -> ${normalized.length} chars');
+    return normalized;
+    
+  } catch (e) {
+    print('💥 Error normalizing SVG colors: $e');
+    return svg; // Return original if normalization fails
+  }
+}
 
 /// Simple diagram viewer with edit button that opens dedicated editing screen
 class SimpleDiagramViewer extends StatefulWidget {
@@ -32,63 +164,15 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
   final TransformationController _transformationController = TransformationController();
   late String _currentSvg;
   bool _isFullscreen = false;
+  bool _svgRenderingFailed = false;
   
-  // Check if SVG is safe to render
-  bool _isSvgSafe(String svgContent) {
-    if (svgContent.isEmpty) return false;
-    if (!svgContent.startsWith('<svg')) return false;
-    
-    // Check for known problematic patterns
-    final problematicPatterns = [
-      RegExp(r'#[0-9A-Fa-f]{6}'), // Hex colors
-      RegExp(r'fill="[^"]*"'), // Fill attributes
-      RegExp(r'stroke="[^"]*"'), // Stroke attributes
-    ];
-    
-    for (final pattern in problematicPatterns) {
-      if (pattern.hasMatch(svgContent)) {
-        print('⚠️ SVG contains potentially problematic pattern: $pattern');
-        return false;
-      }
-    }
-    
-    return true;
-  }
-  
-  // Create a safe fallback SVG
-  String _createSafeFallbackSvg(String originalContent, String diagramType) {
-    final fallbackSvg = '''
-<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#f3f4f6;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#e5e7eb;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-  <rect width="200" height="120" fill="url(#grad1)" stroke="#d1d5db" stroke-width="2" rx="8"/>
-  <circle cx="100" cy="40" r="15" fill="#3b82f6" opacity="0.8"/>
-  <text x="100" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#1f2937" font-weight="bold">
-    ${diagramType.split(' ').first}
-  </text>
-  <text x="100" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#6b7280">
-    Diagram Preview
-  </text>
-  <text x="100" y="85" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#9ca3af">
-    (Original: ${originalContent.length} chars)
-  </text>
-</svg>
-    ''';
-    
-    print('🔧 Created safe fallback SVG for $diagramType');
-    return fallbackSvg;
-  }
+
 
   @override
   void initState() {
     super.initState();
-    _currentSvg = _isSvgSafe(widget.generatedContent.content) 
-        ? widget.generatedContent.content 
-        : _createSafeFallbackSvg(widget.generatedContent.content, widget.template.name);
+    // Normalize SVG colors for Flutter SVG compatibility
+    _currentSvg = normalizeSvgColors(widget.generatedContent.content);
   }
   
   @override
@@ -96,9 +180,8 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.generatedContent.content != widget.generatedContent.content) {
       setState(() {
-        _currentSvg = _isSvgSafe(widget.generatedContent.content) 
-            ? widget.generatedContent.content 
-            : _createSafeFallbackSvg(widget.generatedContent.content, widget.template.name);
+        _currentSvg = normalizeSvgColors(widget.generatedContent.content);
+        _svgRenderingFailed = false; // Reset failure flag
       });
     }
   }
@@ -179,14 +262,8 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
               print('   SVG preview: ${_currentSvg.length > 100 ? _currentSvg.substring(0, 100) + '...' : _currentSvg}');
             }
             
-            // Check if SVG is safe to render
-            if (!_isSvgSafe(_currentSvg)) {
-              print('⚠️ SVG not safe, using fallback for preview');
-              _currentSvg = _createSafeFallbackSvg(
-                widget.generatedContent.content, 
-                widget.template.name
-              );
-            }
+            // Always try to render the original SVG first
+            print('🔍 Attempting to render original SVG (${_currentSvg.length} chars)');
             
             return FutureBuilder<String>(
               future: Future.delayed(const Duration(seconds: 5), () => _currentSvg),
@@ -235,18 +312,78 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
                   ),
                   errorBuilder: (context, error, stackTrace) {
                     print('💥 SVG Error in preview: $error');
-                    print('🔧 Using safe fallback SVG');
+                    print('🔧 Trying with additional color normalization...');
                     
-                    final safeSvg = _createSafeFallbackSvg(
-                      widget.generatedContent.content, 
-                      widget.template.name
-                    );
+                    // Try with more aggressive color normalization
+                    final aggressiveNormalized = normalizeSvgColors(widget.generatedContent.content);
                     
                     return SvgPicture.string(
-                      safeSvg,
+                      aggressiveNormalized,
                       fit: BoxFit.contain,
                       width: 200,
                       height: 120,
+                      placeholderBuilder: (context) => Container(
+                        width: 200,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(strokeWidth: 2, color: Colors.blue),
+                              SizedBox(height: 4),
+                              Text(
+                                'Retrying SVG',
+                                style: TextStyle(
+                                  color: Colors.blue,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      errorBuilder: (context, retryError, stackTrace) {
+                        print('💥 Retry also failed: $retryError');
+                        return Container(
+                          width: 200,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red.shade200),
+                          ),
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error_outline, color: Colors.red, size: 24),
+                                SizedBox(height: 4),
+                                Text(
+                                  'SVG Error',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Color format issue',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 );
