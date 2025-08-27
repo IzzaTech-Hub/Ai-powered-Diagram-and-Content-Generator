@@ -53,6 +53,13 @@ backend/.pytest_cache/
 backend/venv/
 backend/.venv/
 
+# Environment variables and secrets
+.env
+backend/.env
+*.env
+.env.local
+.env.production
+
 # Production build artifacts
 *.apk
 *.aab
