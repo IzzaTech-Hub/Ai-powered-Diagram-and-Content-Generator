@@ -10,15 +10,15 @@ import '../widgets/mind_map_template_selector.dart';
 class ApiService {
   // Backend URLs prioritized for production APK distribution
   static final List<String> _possibleUrls = [
-    'http://127.0.0.1:5000', // Local backend (working)
-    'https://ai-powered-diagram-and-content-gene-pi.vercel.app', // Vercel (needs redeployment)
+    'https://aidiagramgenerator-5sbzj7l4s-uzairhassan375s-projects.vercel.app', // Vercel backend (working!)
+    'http://127.0.0.1:5000', // Local backend (fallback)
     'http://10.0.2.2:5000', // Android emulator only
     'http://localhost:5000', // Local development alternative
   ];
 
 
   static String _baseUrl =
-      'http://127.0.0.1:5000'; // Local backend for now (Vercel needs redeployment)
+      'https://aidiagramgenerator-5sbzj7l4s-uzairhassan375s-projects.vercel.app'; // Vercel backend (working!)
 
   // Initialize API service with connection test
   static void initialize() {

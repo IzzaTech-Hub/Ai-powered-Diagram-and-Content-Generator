@@ -8,6 +8,7 @@ import '../services/api_service.dart';
 import '../utils/error_handler.dart';
 import '../widgets/simple_diagram_viewer.dart';
 import '../utils/platform_download.dart';
+import 'package:flutter/foundation.dart';
 
 class ContentGeneratorScreen extends StatefulWidget {
   const ContentGeneratorScreen({super.key});
@@ -33,6 +34,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
   List<GeneratedContent> _currentVariations = [];
   GeneratedContent? _selectedVariation;
   GeneratedContent? _hoveredVariation;
+  bool _isEditMode = false; // Edit mode toggle
 
   late AnimationController _animationController;
   late AnimationController _pulseController;
@@ -333,6 +335,50 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
       print('📊 Content type: ${generatedContent.isDiagram ? 'SVG Diagram' : 'Text'}');
       print('📏 Content length: ${generatedContent.content.length} chars');
 
+      // Now generate variations
+      print('🔄 Generating diagram variations...');
+      final variationsResponse = await _apiService.generateDiagramVariations(
+        userInput: _inputController.text,
+        diagramType: _selectedDiagramTemplate!.napkinType,
+      );
+      
+      print('✅ Variations generated successfully!');
+      print('📊 Variations response: $variationsResponse');
+
+      // Parse variations and create GeneratedContent objects
+      List<GeneratedContent> variations = [];
+      if (variationsResponse['variations'] != null) {
+        final variationsList = variationsResponse['variations'] as List<dynamic>;
+        print('📊 Found ${variationsList.length} variations in response');
+        
+        for (int i = 0; i < variationsList.length; i++) {
+          final variation = variationsList[i];
+          final content = variation['content'] ?? '';
+          final templateName = variation['templateName'] ?? '${_selectedDiagramTemplate!.name} - Variation ${i + 1}';
+          
+          print('📊 Variation ${i + 1}:');
+          print('   Content length: ${content.length}');
+          print('   Template name: $templateName');
+          print('   Content preview: ${content.length > 100 ? content.substring(0, 100) + '...' : content}');
+          
+          variations.add(GeneratedContent(
+            content: content,
+            templateName: templateName,
+            isDiagram: true,
+            timestamp: DateTime.now(),
+            originalPrompt: _inputController.text,
+            diagramType: variation['diagramType'] ?? _selectedDiagramTemplate!.napkinType,
+          ));
+        }
+      }
+
+      // Add the initial diagram to variations if not already included
+      if (variations.isNotEmpty) {
+        variations.insert(0, generatedContent);
+      } else {
+        variations = [generatedContent];
+      }
+
       setState(() {
         // Remove any existing diagrams of the same type
         _generatedContents.removeWhere(
@@ -342,30 +388,65 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
         // Add the new diagram
         _generatedContents.add(generatedContent);
         
-        // Update variation state
-        _currentVariations = [generatedContent];
+        // Update variation state with all variations
+        _currentVariations = variations;
         _selectedVariation = generatedContent;
         _hoveredVariation = null;
+        
+        // Debug: Print all variations being set
+        print('🔄 Setting variations in state:');
+        for (int i = 0; i < variations.length; i++) {
+          print('   Variation ${i + 1}: ${variations[i].templateName} (content length: ${variations[i].content.length})');
+        }
+        
+        // Stop loading and clear any errors
+        _isLoading = false;
+        _errorMessage = null;
       });
+      
+      print('🔄 Main generate: Loading state set to false in setState');
+
+      // Stop the loading animation
+      _loadingController.stop();
+      
+      print('✅ Loading state set to false');
+      print('📊 Current variations count: ${_currentVariations.length}');
+      print('📊 Selected variation: ${_selectedVariation?.templateName}');
+      
+      // Force another rebuild to ensure UI updates
+      if (mounted) {
+        setState(() {});
+        print('🔄 Forced rebuild after loading state change');
+      }
 
       ErrorHandler.showSuccessSnackBar(
         context,
-        '🎉 Generated ${_selectedDiagramTemplate!.name} successfully!',
+        '🎉 Generated ${_selectedDiagramTemplate!.name} with ${variations.length} variations!',
       );
     } catch (e) {
       print('💥 Error generating diagram: ${e.toString()}');
       final friendlyMessage = ErrorHandler.getFriendlyErrorMessage(
         e.toString(),
       );
-      setState(() => _errorMessage = friendlyMessage);
+      setState(() {
+        _errorMessage = friendlyMessage;
+        _isLoading = false; // Make sure to stop loading on error too
+      });
+      _loadingController.stop(); // Stop loading animation on error
       ErrorHandler.showErrorSnackBar(
         context,
         friendlyMessage,
         onRetry: _generateDiagram,
       );
     } finally {
-      setState(() => _isLoading = false);
-      _loadingController.stop();
+      // Ensure loading state is always reset
+      if (_isLoading) {
+        setState(() {
+          _isLoading = false;
+        });
+        _loadingController.stop();
+        print('🔄 Finally block: Loading state reset to false');
+      }
     }
   }
 
@@ -1300,6 +1381,57 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                   ],
                 ),
               ),
+              
+              // Debug information (only in debug mode)
+              if (kDebugMode) ...[
+                SizedBox(height: isSmallScreen ? 16 : 24),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Debug Info:',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      Text(
+                        '_isLoading: $_isLoading',
+                        style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                      ),
+                      Text(
+                        '_generatedContents: ${_generatedContents.length}',
+                        style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                      ),
+                      Text(
+                        '_currentVariations: ${_currentVariations.length}',
+                        style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          print('🔧 Debug button pressed - forcing loading state to false');
+                          setState(() {
+                            _isLoading = false;
+                          });
+                        },
+                        child: const Text('Force Stop Loading', style: TextStyle(fontSize: 10)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         );
@@ -1505,14 +1637,22 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
 
                 // Content Area
                 SliverToBoxAdapter(
-                  child:
-                      _isLoading && _generatedContents.isEmpty
+                  child: Builder(
+                    builder: (context) {
+                      // Debug: Print current state
+                      if (kDebugMode) {
+                        print('🔍 Build method - _isLoading: $_isLoading, _generatedContents: ${_generatedContents.length}, _currentVariations: ${_currentVariations.length}');
+                      }
+                      
+                      return _isLoading
                           ? _buildLoadingState()
                           : _generatedContents.isEmpty
                           ? _buildEmptyState()
                           : _currentVariations.isNotEmpty
                           ? _buildVariationsLayout()
-                          : _buildContentList(),
+                          : _buildContentList();
+                    },
+                  ),
                 ),
 
                 // Bottom padding
@@ -1525,257 +1665,419 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
     );
   }
 
-  // Build variations layout with left sidebar
+  // Build variations layout - Mobile optimized grid layout
   Widget _buildVariationsLayout() {
     return Container(
       margin: const EdgeInsets.all(16),
-      height: 700, // Increased height for better visibility
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left sidebar with variation thumbnails
+          // Header with variation count
           Container(
-            width: 300, // Slightly wider for better visibility
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              gradient: LinearGradient(
+                colors: [Colors.indigo.shade600, Colors.purple.shade600],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                // Sidebar header
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.indigo.shade600, Colors.purple.shade600],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
-                  ),
-                  child: const Row(
+                const Icon(Icons.dashboard, color: Colors.white, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.dashboard, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text(
+                      const Text(
                         'Diagram Variations',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${_currentVariations.length} variations generated',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 14,
                         ),
                       ),
                     ],
                   ),
                 ),
-                
-                // Variations list
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: _currentVariations.length,
-                    itemBuilder: (context, index) {
-                      final variation = _currentVariations[index];
-                      final isSelected = _selectedVariation == variation;
-                      final isHovered = _hoveredVariation == variation;
-                      
-                      return MouseRegion(
-                        onEnter: (_) {
-                          _onVariationHover(variation);
-                        },
-                        onExit: (_) {
-                          _onVariationHover(null);
-                        },
-                        child: GestureDetector(
-                          onTap: () {
-                            _onVariationSelected(variation);
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isSelected ? Colors.indigo.shade50 : Colors.grey.shade50,
-                              border: Border.all(
-                                color: isSelected 
-                                    ? Colors.indigo.shade300 
-                                    : isHovered 
-                                        ? Colors.indigo.shade200 
-                                        : Colors.grey.shade300,
-                                width: isSelected ? 2 : 1,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: isHovered ? [
-                                BoxShadow(
-                                  color: Colors.indigo.withOpacity(0.2),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ] : null,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Variation thumbnail
-                                Container(
-                                  height: 140, // Increased height for better preview
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: Colors.grey.shade200),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: SimpleDiagramViewer(
-                                      generatedContent: variation,
-                                      template: _diagramTemplates.firstWhere(
-                                        (t) => t.name == variation.templateName,
-                                        orElse: () => _diagramTemplates.first,
-                                      ),
-                                      onDiagramUpdated: (updatedContent) {
-                                        setState(() {
-                                          final index = _currentVariations.indexOf(variation);
-                                          if (index != -1) {
-                                            _currentVariations[index] = updatedContent;
-                                          }
-                                        });
-                                      },
-                                      originalPrompt: variation.originalPrompt ?? '',
-                                      svgContent: variation.content,
-                                      isPreview: true,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                
-                                // Variation info
-                                Text(
-                                  variation.diagramType?.split('_').map((word) => 
-                                    word[0].toUpperCase() + word.substring(1)
-                                  ).join(' ') ?? 'Standard',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: isSelected ? Colors.indigo.shade700 : Colors.grey.shade700,
-                                  ),
-                                ),
-                                Text(
-                                  'Variation ${index + 1}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                                // Add variation style info
-                                Text(
-                                  _getVariationStyleName(variation),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey.shade500,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                                // Add current display indicator
-                                if (isSelected || isHovered)
-                                  Container(
-                                    margin: const EdgeInsets.only(top: 4),
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: isSelected ? Colors.indigo.shade100 : Colors.indigo.shade50,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: isSelected ? Colors.indigo.shade300 : Colors.indigo.shade200,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      isSelected ? 'Currently Displayed' : 'Hovering',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: isSelected ? Colors.indigo.shade700 : Colors.indigo.shade600,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
+                // Edit mode toggle
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _isEditMode = !_isEditMode;
+                    });
+                  },
+                  icon: Icon(
+                    _isEditMode ? Icons.visibility : Icons.edit,
+                    color: Colors.white,
                   ),
+                  tooltip: _isEditMode ? 'View Mode' : 'Edit Mode',
                 ),
               ],
             ),
           ),
           
-          const SizedBox(width: 16),
+          const SizedBox(height: 20),
           
-          // Main content area
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Builder(
-                builder: (context) {
-                  print('Building main content area - Selected: ${_selectedVariation?.templateName}, Hovered: ${_hoveredVariation?.templateName}');
-                  return _selectedVariation != null || _hoveredVariation != null
-                      ? _buildVariationDetails(_hoveredVariation ?? _selectedVariation!)
-                      : const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.touch_app,
-                                size: 64,
-                                color: Colors.grey,
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                'Select a variation to view details',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Hover over variations to preview',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                },
-              ),
+          // Variations grid - Mobile responsive
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2, // 2 columns for mobile
+              childAspectRatio: 0.8, // Better aspect ratio for diagrams
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
             ),
+            itemCount: _currentVariations.length,
+            itemBuilder: (context, index) {
+              final variation = _currentVariations[index];
+              final isSelected = _selectedVariation == variation;
+              
+              return GestureDetector(
+                onTap: () {
+                  _onVariationSelected(variation);
+                },
+                onLongPress: () {
+                  // Show edit options on long press
+                  _showVariationOptions(context, variation, index);
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isSelected ? Colors.indigo.shade400 : Colors.grey.shade300,
+                      width: isSelected ? 3 : 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Variation header
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.indigo.shade100 : Colors.grey.shade100,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Variation ${index + 1}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected ? Colors.indigo.shade700 : Colors.grey.shade700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            if (isSelected)
+                              Icon(
+                                Icons.check_circle,
+                                color: Colors.indigo.shade600,
+                                size: 20,
+                              ),
+                          ],
+                        ),
+                      ),
+                      
+                      // Diagram preview
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Builder(
+                              builder: (context) {
+                                // Debug: Check if content is empty
+                                if (kDebugMode) {
+                                  print('🔍 Building variation ${index + 1}:');
+                                  print('   Template name: ${variation.templateName}');
+                                  print('   Content length: ${variation.content.length}');
+                                  print('   Content preview: ${variation.content.length > 100 ? variation.content.substring(0, 100) + '...' : variation.content}');
+                                }
+                                
+                                if (variation.content.isEmpty) {
+                                  return Container(
+                                    width: 200,
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.error, color: Colors.red, size: 24),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            'No Content',
+                                            style: TextStyle(
+                                              color: Colors.red,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }
+                                
+                                return SimpleDiagramViewer(
+                                  generatedContent: variation,
+                                  template: _diagramTemplates.firstWhere(
+                                    (t) => t.name == variation.templateName,
+                                    orElse: () => _diagramTemplates.first,
+                                  ),
+                                  onDiagramUpdated: (updatedContent) {
+                                    setState(() {
+                                      final index = _currentVariations.indexOf(variation);
+                                      if (index != -1) {
+                                        _currentVariations[index] = updatedContent;
+                                      }
+                                    });
+                                  },
+                                  originalPrompt: variation.originalPrompt ?? '',
+                                  svgContent: variation.content,
+                                  isPreview: true,
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      // Variation info footer
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(16),
+                            bottomRight: Radius.circular(16),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _getVariationStyleName(variation),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade800,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              variation.diagramType?.split('_').map((word) => 
+                                word[0].toUpperCase() + word.substring(1)
+                              ).join(' ') ?? 'Standard',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          
+          const SizedBox(height: 20),
+          
+          // Action buttons
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _isLoading ? null : _regenerateVariations,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Regenerate Variations'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.indigo.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _selectedVariation != null ? () {
+                    // Download selected variation
+                    _downloadVariation(_selectedVariation!);
+                  } : null,
+                  icon: const Icon(Icons.download),
+                  label: const Text('Download'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  // Method to regenerate variations
+  Future<void> _regenerateVariations() async {
+    if (_selectedDiagramTemplate == null || _inputController.text.isEmpty) {
+      ErrorHandler.showErrorSnackBar(
+        context,
+        'Please select a template and enter input to regenerate variations',
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      print('🔄 Regenerating diagram variations...');
+      final variationsResponse = await _apiService.generateDiagramVariations(
+        userInput: _inputController.text,
+        diagramType: _selectedDiagramTemplate!.napkinType,
+      );
+      
+      print('✅ Variations regenerated successfully!');
+      print('📊 Variations response: $variationsResponse');
+
+      // Parse variations and create GeneratedContent objects
+      List<GeneratedContent> variations = [];
+      if (variationsResponse['variations'] != null) {
+        final variationsList = variationsResponse['variations'] as List<dynamic>;
+        print('📊 Regenerate: Found ${variationsList.length} variations in response');
+        
+        for (int i = 0; i < variationsList.length; i++) {
+          final variation = variationsList[i];
+          final content = variation['content'] ?? '';
+          final templateName = variation['templateName'] ?? '${_selectedDiagramTemplate!.name} - Variation ${i + 1}';
+          
+          print('📊 Regenerate Variation ${i + 1}:');
+          print('   Content length: ${content.length}');
+          print('   Template name: $templateName');
+          print('   Content preview: ${content.length > 100 ? content.substring(0, 100) + '...' : content}');
+          
+          variations.add(GeneratedContent(
+            content: content,
+            templateName: templateName,
+            isDiagram: true,
+            timestamp: DateTime.now(),
+            originalPrompt: _inputController.text,
+            diagramType: variation['diagramType'] ?? _selectedDiagramTemplate!.napkinType,
+          ));
+        }
+      }
+
+      // Keep the first variation as selected if we have variations
+      if (variations.isNotEmpty) {
+        setState(() {
+          _currentVariations = variations;
+          _selectedVariation = variations.first;
+          _hoveredVariation = null;
+          _isLoading = false; // Stop loading
+          _errorMessage = null; // Clear any errors
+        });
+        
+        print('🔄 Regenerate variations: Loading state set to false');
+
+        // Force another rebuild to ensure UI updates
+        if (mounted) {
+          setState(() {});
+          print('🔄 Forced rebuild after regenerate variations');
+        }
+
+        ErrorHandler.showSuccessSnackBar(
+          context,
+          '🎉 Regenerated ${variations.length} variations successfully!',
+        );
+      } else {
+        setState(() {
+          _isLoading = false; // Stop loading even if no variations
+        });
+        
+        // Force another rebuild to ensure UI updates
+        if (mounted) {
+          setState(() {});
+          print('🔄 Forced rebuild after no variations generated');
+        }
+        
+        ErrorHandler.showErrorSnackBar(
+          context,
+          'No variations were generated. Please try again.',
+        );
+      }
+    } catch (e) {
+      print('💥 Error regenerating variations: ${e.toString()}');
+      final friendlyMessage = ErrorHandler.getFriendlyErrorMessage(
+        e.toString(),
+      );
+      setState(() {
+        _errorMessage = friendlyMessage;
+        _isLoading = false; // Make sure to stop loading on error
+      });
+      
+      // Force another rebuild to ensure UI updates
+      if (mounted) {
+        setState(() {});
+        print('🔄 Forced rebuild after regenerate variations error');
+      }
+      
+      ErrorHandler.showErrorSnackBar(
+        context,
+        friendlyMessage,
+        onRetry: _regenerateVariations,
+      );
+    }
   }
 
   // Helper method to get variation style name
@@ -1874,34 +2176,11 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                     icon: const Icon(Icons.download, color: Colors.white),
                     tooltip: 'Download SVG',
                   ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => SimpleDiagramViewer(
-                            generatedContent: variation,
-                            template: template,
-                            onDiagramUpdated: (updatedContent) {
-                              setState(() {
-                                final index = _currentVariations.indexOf(variation);
-                                if (index != -1) {
-                                  _currentVariations[index] = updatedContent;
-                                  if (_selectedVariation == variation) {
-                                    _selectedVariation = updatedContent;
-                                  }
-                                }
-                              });
-                            },
-                            originalPrompt: variation.originalPrompt ?? '',
-                            svgContent: variation.content,
-                            isPreview: false,
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.edit, color: Colors.white),
-                    tooltip: 'Edit Diagram',
-                  ),
+                                     IconButton(
+                     onPressed: () => _editDiagram(variation),
+                     icon: const Icon(Icons.edit, color: Colors.white),
+                     tooltip: 'Edit Diagram',
+                   ),
                 ],
               ),
             ],
@@ -1939,6 +2218,99 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
           ),
         ),
       ],
+    );
+  }
+
+  // Show variation options dialog
+  void _showVariationOptions(BuildContext context, GeneratedContent variation, int index) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Variation ${index + 1} Options'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Edit Diagram'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _editDiagram(variation);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.download),
+                title: const Text('Download SVG'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _downloadVariation(variation);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete),
+                title: const Text('Delete Variation'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _deleteVariation(index);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Download variation
+  void _downloadVariation(GeneratedContent variation) {
+    _handleDownload(variation.content, variation.templateName);
+  }
+
+  // Delete variation
+  void _deleteVariation(int index) {
+    setState(() {
+      if (_selectedVariation == _currentVariations[index]) {
+        _selectedVariation = null;
+      }
+      _currentVariations.removeAt(index);
+    });
+  }
+
+  // Edit diagram - Navigate to full screen editor
+  void _editDiagram(GeneratedContent variation) {
+    final template = _diagramTemplates.firstWhere(
+      (t) => t.name == variation.templateName.split(' - ').first,
+      orElse: () => _diagramTemplates.first,
+    );
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SimpleDiagramViewer(
+          generatedContent: variation,
+          template: template,
+          onDiagramUpdated: (updatedContent) {
+            setState(() {
+              final index = _currentVariations.indexOf(variation);
+              if (index != -1) {
+                _currentVariations[index] = updatedContent;
+                if (_selectedVariation == variation) {
+                  _selectedVariation = updatedContent;
+                }
+              }
+            });
+          },
+          originalPrompt: variation.originalPrompt ?? '',
+          svgContent: variation.content,
+          isPreview: false,
+        ),
+      ),
     );
   }
 }

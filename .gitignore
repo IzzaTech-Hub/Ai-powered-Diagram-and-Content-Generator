@@ -54,11 +54,11 @@ backend/venv/
 backend/.venv/
 
 # Environment variables and secrets
-.env
-backend/.env
-*.env
-.env.local
-.env.production
+# .env
+# backend/.env
+# *.env
+# .env.local
+# .env.production
 
 # Production build artifacts
 *.apk
@@ -82,3 +82,4 @@ Desktop.ini
 *.bat
 *.sh
 scripts/
+.vercel
