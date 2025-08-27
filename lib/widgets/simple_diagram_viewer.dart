@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../models/generated_content.dart';
 import '../models/napkin_template.dart';
@@ -31,11 +32,75 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
   final TransformationController _transformationController = TransformationController();
   late String _currentSvg;
   bool _isFullscreen = false;
+  
+  // Check if SVG is safe to render
+  bool _isSvgSafe(String svgContent) {
+    if (svgContent.isEmpty) return false;
+    if (!svgContent.startsWith('<svg')) return false;
+    
+    // Check for known problematic patterns
+    final problematicPatterns = [
+      RegExp(r'#[0-9A-Fa-f]{6}'), // Hex colors
+      RegExp(r'fill="[^"]*"'), // Fill attributes
+      RegExp(r'stroke="[^"]*"'), // Stroke attributes
+    ];
+    
+    for (final pattern in problematicPatterns) {
+      if (pattern.hasMatch(svgContent)) {
+        print('⚠️ SVG contains potentially problematic pattern: $pattern');
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  // Create a safe fallback SVG
+  String _createSafeFallbackSvg(String originalContent, String diagramType) {
+    final fallbackSvg = '''
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f3f4f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e5e7eb;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="120" fill="url(#grad1)" stroke="#d1d5db" stroke-width="2" rx="8"/>
+  <circle cx="100" cy="40" r="15" fill="#3b82f6" opacity="0.8"/>
+  <text x="100" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#1f2937" font-weight="bold">
+    ${diagramType.split(' ').first}
+  </text>
+  <text x="100" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#6b7280">
+    Diagram Preview
+  </text>
+  <text x="100" y="85" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#9ca3af">
+    (Original: ${originalContent.length} chars)
+  </text>
+</svg>
+    ''';
+    
+    print('🔧 Created safe fallback SVG for $diagramType');
+    return fallbackSvg;
+  }
 
   @override
   void initState() {
     super.initState();
-    _currentSvg = widget.generatedContent.content;
+    _currentSvg = _isSvgSafe(widget.generatedContent.content) 
+        ? widget.generatedContent.content 
+        : _createSafeFallbackSvg(widget.generatedContent.content, widget.template.name);
+  }
+  
+  @override
+  void didUpdateWidget(SimpleDiagramViewer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.generatedContent.content != widget.generatedContent.content) {
+      setState(() {
+        _currentSvg = _isSvgSafe(widget.generatedContent.content) 
+            ? widget.generatedContent.content 
+            : _createSafeFallbackSvg(widget.generatedContent.content, widget.template.name);
+      });
+    }
   }
 
   @override
@@ -104,24 +169,90 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
       height: double.infinity,
       color: Colors.white,
       child: Center(
-        child: SvgPicture.string(
-          _currentSvg,
-          fit: BoxFit.contain,
-          width: 200, // Fixed width for consistent thumbnails
-          height: 120, // Fixed height for consistent thumbnails
-          placeholderBuilder: (context) => Container(
-            width: 200,
-            height: 120,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Center(
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-              ),
-            ),
-          ),
+        child: Builder(
+          builder: (context) {
+            // Debug: Print SVG content info
+            if (kDebugMode) {
+              print('🔍 SimpleDiagramViewer Preview:');
+              print('   SVG length: ${_currentSvg.length}');
+              print('   SVG starts with: ${_currentSvg.startsWith('<svg') ? 'Yes' : 'No'}');
+              print('   SVG preview: ${_currentSvg.length > 100 ? _currentSvg.substring(0, 100) + '...' : _currentSvg}');
+            }
+            
+            // Check if SVG is safe to render
+            if (!_isSvgSafe(_currentSvg)) {
+              print('⚠️ SVG not safe, using fallback for preview');
+              _currentSvg = _createSafeFallbackSvg(
+                widget.generatedContent.content, 
+                widget.template.name
+              );
+            }
+            
+            return FutureBuilder<String>(
+              future: Future.delayed(const Duration(seconds: 5), () => _currentSvg),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Container(
+                    width: 200,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(strokeWidth: 2),
+                          SizedBox(height: 4),
+                          Text(
+                            'Loading...',
+                            style: TextStyle(fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                
+                return SvgPicture.string(
+                  _currentSvg,
+                  fit: BoxFit.contain,
+                  width: 200, // Fixed width for consistent thumbnails
+                  height: 120, // Fixed height for consistent thumbnails
+                  placeholderBuilder: (context) => Container(
+                    width: 200,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  ),
+                  errorBuilder: (context, error, stackTrace) {
+                    print('💥 SVG Error in preview: $error');
+                    print('🔧 Using safe fallback SVG');
+                    
+                    final safeSvg = _createSafeFallbackSvg(
+                      widget.generatedContent.content, 
+                      widget.template.name
+                    );
+                    
+                    return SvgPicture.string(
+                      safeSvg,
+                      fit: BoxFit.contain,
+                      width: 200,
+                      height: 120,
+                    );
+                  },
+                );
+              },
+            );
+          },
         ),
       ),
     );
@@ -169,6 +300,42 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
                 width: 600, // Large size for readability
                 height: 450,
                 placeholderBuilder: (context) => const CircularProgressIndicator(),
+                errorBuilder: (context, error, stackTrace) {
+                  print('💥 SVG Error in normal view: $error');
+                  return Container(
+                    width: 600,
+                    height: 450,
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.warning, color: Colors.orange, size: 40),
+                          SizedBox(height: 16),
+                          Text(
+                            'SVG Rendering Error',
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'The diagram could not be displayed',
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
