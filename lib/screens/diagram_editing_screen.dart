@@ -1,8 +1,157 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/foundation.dart';
 import 'package:xml/xml.dart' as xml;
 import '../models/napkin_template.dart';
 import '../services/api_service.dart';
+
+/// Normalizes SVG colors to 6-digit hex format for Flutter SVG compatibility
+/// Handles #RGB, #RRGGBB, rgb(r,g,b), rgba(#hex,alpha), and other color formats
+String normalizeSvgColors(String svg) {
+  if (svg.isEmpty) return svg;
+  
+  try {
+    String normalized = svg;
+    
+    // 0. Fix problematic rgba(#hex,alpha) patterns that Flutter SVG can't handle
+    // Convert rgba(#10B981, 0.1) to rgba(16, 185, 129, 0.1)
+    final rgbaHexRegex = RegExp(r'rgba\(#([0-9A-Fa-f]{6}),\s*([0-9.]+)\)');
+    normalized = normalized.replaceAllMapped(rgbaHexRegex, (match) {
+      try {
+        String hexColor = '#${match.group(1)}';
+        String alpha = match.group(2)!;
+        
+        // Convert hex to RGB values
+        int r = int.parse(hexColor.substring(1, 3), radix: 16);
+        int g = int.parse(hexColor.substring(3, 5), radix: 16);
+        int b = int.parse(hexColor.substring(5, 7), radix: 16);
+        
+        return 'rgba($r, $g, $b, $alpha)';
+      } catch (e) {
+        print('💥 Error converting rgba hex: $e');
+        return 'rgba(107, 114, 128, 0.1)'; // Safe fallback
+      }
+    });
+    
+    // 1. Convert rgb(r,g,b) format to hex
+    final rgbRegex = RegExp(r'rgb\((\d+),\s*(\d+),\s*(\d+)\)');
+    normalized = normalized.replaceAllMapped(rgbRegex, (match) {
+      try {
+        int r = int.parse(match.group(1)!);
+        int g = int.parse(match.group(2)!);
+        int b = int.parse(match.group(3)!);
+        
+        // Ensure values are in valid range
+        r = r.clamp(0, 255);
+        g = g.clamp(0, 255);
+        b = b.clamp(0, 255);
+        
+        String hex = '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}';
+        return hex.toUpperCase();
+      } catch (e) {
+        print('💥 Error parsing RGB values: $e');
+        return '#6B7280'; // Safe fallback
+      }
+    });
+    
+    // 2. Convert 3-digit hex (#RGB) to 6-digit hex (#RRGGBB)
+    final shortHexRegex = RegExp(r'#([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])(?![0-9A-Fa-f])');
+    normalized = normalized.replaceAllMapped(shortHexRegex, (match) {
+      try {
+        String r = match.group(1)!;
+        String g = match.group(2)!;
+        String b = match.group(3)!;
+        
+        // Duplicate each character: #RGB -> #RRGGBB
+        String longHex = '#$r$r$g$g$b$b';
+        return longHex.toUpperCase();
+      } catch (e) {
+        print('💥 Error converting short hex: $e');
+        return '#6B7280'; // Safe fallback
+      }
+    });
+    
+    // 3. Ensure all 6-digit hex colors are uppercase and valid
+    final hexRegex = RegExp(r'#([0-9A-Fa-f]{6})');
+    normalized = normalized.replaceAllMapped(hexRegex, (match) {
+      try {
+        String hex = match.group(1)!;
+        // Validate hex and convert to uppercase
+        if (RegExp(r'^[0-9A-Fa-f]{6}$').hasMatch(hex)) {
+          return '#${hex.toUpperCase()}';
+        } else {
+          print('⚠️ Invalid hex color found: #$hex');
+          return '#6B7280'; // Safe fallback
+        }
+      } catch (e) {
+        print('💥 Error processing hex color: $e');
+        return '#6B7280'; // Safe fallback
+      }
+    });
+    
+    // 4. Handle fill and stroke attributes specifically
+    // Convert rgb() in fill attributes
+    normalized = normalized.replaceAllMapped(RegExp(r'fill="([^"]*)"'), (match) {
+      String value = match.group(1)!;
+      if (value.startsWith('rgb(')) {
+        // Convert rgb to hex
+        final rgbMatch = RegExp(r'rgb\((\d+),\s*(\d+),\s*(\d+)\)').firstMatch(value);
+        if (rgbMatch != null) {
+          try {
+            int r = int.parse(rgbMatch.group(1)!);
+            int g = int.parse(rgbMatch.group(2)!);
+            int b = int.parse(rgbMatch.group(3)!);
+            
+            r = r.clamp(0, 255);
+            g = g.clamp(0, 255);
+            b = b.clamp(0, 255);
+            
+            String hex = '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}';
+            return 'fill="${hex.toUpperCase()}"';
+          } catch (e) {
+            print('💥 Error converting fill RGB: $e');
+            return 'fill="#6B7280"';
+          }
+        }
+      }
+      return match.group(0)!;
+    });
+    
+    // Convert rgb() in stroke attributes
+    normalized = normalized.replaceAllMapped(RegExp(r'stroke="([^"]*)"'), (match) {
+      String value = match.group(1)!;
+      if (value.startsWith('rgb(')) {
+        // Convert rgb to hex
+        final rgbMatch = RegExp(r'rgb\((\d+),\s*(\d+),\s*(\d+)\)').firstMatch(value);
+        if (rgbMatch != null) {
+          try {
+            int r = int.parse(rgbMatch.group(1)!);
+            int g = int.parse(rgbMatch.group(2)!);
+            int b = int.parse(rgbMatch.group(3)!);
+            
+            r = r.clamp(0, 255);
+            g = g.clamp(0, 255);
+            b = b.clamp(0, 255);
+            
+            String hex = '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}';
+            return 'stroke="${hex.toUpperCase()}"';
+          } catch (e) {
+            print('💥 Error converting stroke RGB: $e');
+            return 'stroke="#374151"';
+          }
+        }
+      }
+      return match.group(0)!;
+    });
+    
+    print('🔧 SVG colors normalized: ${svg.length} -> ${normalized.length} chars');
+    return normalized;
+    
+  } catch (e) {
+    print('💥 Error normalizing SVG colors: $e');
+    return svg; // Return original if normalization fails
+  }
+}
 
 class EditableText {
   final String id;
@@ -443,7 +592,7 @@ class _DiagramEditingScreenState extends State<DiagramEditingScreen>
             color: Colors.white,
             child: Center(
               child: SvgPicture.string(
-                _currentSvg,
+                normalizeSvgColors(_currentSvg),
                 fit: BoxFit.contain,
                 width: 800,
                 height: 600,
