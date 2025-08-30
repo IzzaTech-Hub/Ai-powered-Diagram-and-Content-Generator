@@ -6,6 +6,7 @@ import '../models/content_template.dart';
 import '../models/generated_content.dart';
 import '../models/napkin_template.dart';
 import '../widgets/mind_map_template_selector.dart';
+import 'config_service.dart';
 
 class ApiService {
   // Backend URLs prioritized for production APK distribution
@@ -16,12 +17,13 @@ class ApiService {
     'http://localhost:5000', // Local development alternative
   ];
 
-
-  static String _baseUrl =
-      'https://aidiagramgenerator-5sbzj7l4s-uzairhassan375s-projects.vercel.app'; // Vercel backend (working!)
+  static String _baseUrl = 'https://aidiagramgenerator-5sbzj7l4s-uzairhassan375s-projects.vercel.app'; // Vercel backend (working!)
 
   // Initialize API service with connection test
   static void initialize() {
+    // Get base URL from ConfigService
+    _baseUrl = ConfigService().apiUrl;
+    
     print('🚀 API Service initialized with endpoint: $_baseUrl');
     print('🔍 Testing connection...');
     
@@ -33,7 +35,7 @@ class ApiService {
     try {
       final response = await http
           .get(Uri.parse('$_baseUrl/health'))
-          .timeout(const Duration(seconds: 5));
+          .timeout(Duration(seconds: ConfigService().apiTimeout));
           
       if (response.statusCode == 200) {
         final healthData = json.decode(response.body);
@@ -52,16 +54,43 @@ class ApiService {
   // Get the current base URL
   static String get baseUrl => _baseUrl;
 
+  // Update base URL from ConfigService
+  static void updateBaseUrl() {
+    _baseUrl = ConfigService().apiUrl;
+    print('🔄 API Service base URL updated to: $_baseUrl');
+  }
+
   // Find working backend URL with better error handling
   static Future<String?> findWorkingBackend() async {
     print('🔍 Searching for working backend...');
     
+    // First try the configured URL from Remote Config
+    try {
+      final configUrl = ConfigService().apiUrl;
+      print('🔗 Trying configured URL: $configUrl');
+      final response = await http
+          .get(Uri.parse('$configUrl/health'))
+          .timeout(Duration(seconds: ConfigService().apiTimeout));
+
+      if (response.statusCode == 200) {
+        final healthData = json.decode(response.body);
+        print('✅ Found working backend at configured URL: $configUrl');
+        print('📊 Server status: ${healthData['status']}');
+        print('🤖 AI service: ${healthData['groq_client']}');
+        _baseUrl = configUrl;
+        return configUrl;
+      }
+    } catch (e) {
+      print('💥 Failed to connect to configured URL: ${e.toString().substring(0, 100)}...');
+    }
+    
+    // Fallback to hardcoded URLs
     for (String url in _possibleUrls) {
       try {
-        print('🔗 Trying: $url');
+        print('🔗 Trying fallback: $url');
         final response = await http
             .get(Uri.parse('$url/health'))
-            .timeout(const Duration(seconds: 5));
+            .timeout(Duration(seconds: ConfigService().apiTimeout));
 
         if (response.statusCode == 200) {
           final healthData = json.decode(response.body);

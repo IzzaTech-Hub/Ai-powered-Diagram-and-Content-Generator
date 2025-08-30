@@ -569,13 +569,13 @@ def generate_enhanced_sequence_svg(actors, interactions):
     
     svg_elements = [
         '<defs>',
-        '''
+        f'''
         <linearGradient id="actorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
             <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
         </linearGradient>
         ''',
-        '''
+        f'''
         <marker id="seqArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="#4B5563"/>
         </marker>
@@ -650,13 +650,13 @@ def generate_enhanced_state_svg(states, transitions):
     
     svg_elements = [
         '<defs>',
-        '''
+        f'''
         <linearGradient id="stateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:#DC2626;stop-opacity:1" />
             <stop offset="100%" style="stop-color:#EF4444;stop-opacity:1" />
         </linearGradient>
         ''',
-        '''
+        f'''
         <marker id="stateArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="#4B5563"/>
         </marker>
@@ -865,15 +865,16 @@ def generate_enhanced_network_svg(data):
     width, height = 1400, 900
     center_x, center_y = width // 2, height // 2
     
+    theme = data.get("theme", {})
     svg_elements = [
         '<defs>',
-        '''
+        f'''
         <linearGradient id="networkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#1E3A8A;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#3B82F6;stop-opacity:1" />
+            <stop offset="0%" style="stop-color:{theme.get('primary', '#1E3A8A')};stop-opacity:1" />
+            <stop offset="100%" style="stop-color:{theme.get('secondary', '#3B82F6')};stop-opacity:1" />
         </linearGradient>
         ''',
-        '''
+        f'''
         <filter id="networkShadow" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
             <feOffset dx="2" dy="4" result="offset"/>
@@ -882,9 +883,9 @@ def generate_enhanced_network_svg(data):
             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
         ''',
-        '''
+        f'''
         <marker id="networkArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#4B5563"/>
+            <polygon points="0 0, 10 3.5, 0 7" fill="{theme.get('accent', '#4B5563')}"/>
         </marker>
         ''',
         '</defs>',
@@ -1453,13 +1454,13 @@ def generate_themed_mindmap_svg(central_topic, branches, variation, theme):
     
     svg_elements = [
         '<defs>',
-        '''
+        f'''
         <linearGradient id="mindmapGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
-        '''
+        f'''
         <filter id="mindmapShadow" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
             <feOffset dx="2" dy="4" result="offset"/>
@@ -1589,7 +1590,7 @@ def generate_themed_timeline_svg(events, variation, theme):
     
     svg_elements = [
         '<defs>',
-        '''
+        f'''
         <linearGradient id="timelineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />

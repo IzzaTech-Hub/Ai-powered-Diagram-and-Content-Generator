@@ -41,49 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCC16exf_GXEyXeHtBo6bw6xvIRKTa7U2U',
-    appId: '1:453557666577:web:e188ce2556e5e22fe002b0',
-    messagingSenderId: '453557666577',
-    projectId: 'ai-diagram-generator',
-    authDomain: 'ai-diagram-generator.firebaseapp.com',
-    storageBucket: 'ai-diagram-generator.firebasestorage.app',
-    measurementId: 'G-5ELEJMXVF3',
+    apiKey: 'AIzaSyDWV68FezSBk7R6beMRBgq0e_9tzJxBUao',
+    appId: '1:875770681301:web:8f7060aa03df5e66bdcf5c',
+    messagingSenderId: '875770681301',
+    projectId: 'ai-diagram-maker',
+    authDomain: 'ai-diagram-maker.firebaseapp.com',
+    storageBucket: 'ai-diagram-maker.firebasestorage.app',
+    measurementId: 'G-KV4CKTVM61',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAmZjiL2T_2I1vKVGaGOEXFKAjkt2M2g-s',
-    appId: '1:453557666577:android:731768eb5a8a3976e002b0',
-    messagingSenderId: '453557666577',
-    projectId: 'ai-diagram-generator',
-    storageBucket: 'ai-diagram-generator.firebasestorage.app',
+    apiKey: 'AIzaSyBBkgw7PemhRQYnEfLYhT5EdyUuhI06b3M',
+    appId: '1:875770681301:android:97c5732915b3362cbdcf5c',
+    messagingSenderId: '875770681301',
+    projectId: 'ai-diagram-maker',
+    storageBucket: 'ai-diagram-maker.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDaxxWHFvXBPEfbQsUzSqh8VJBq6o2ipKg',
-    appId: '1:453557666577:ios:76e4823ec4ebefb0e002b0',
-    messagingSenderId: '453557666577',
-    projectId: 'ai-diagram-generator',
-    storageBucket: 'ai-diagram-generator.firebasestorage.app',
-    iosBundleId: 'com.example.myFlutterApp',
+    apiKey: 'AIzaSyCXyvEyXwRlXhCBkpT3uPYkYiQd8FCEZ8Y',
+    appId: '1:875770681301:ios:c9f860c3da10c44ebdcf5c',
+    messagingSenderId: '875770681301',
+    projectId: 'ai-diagram-maker',
+    storageBucket: 'ai-diagram-maker.firebasestorage.app',
+    iosBundleId: 'com.ai.visual.generator.maker',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyDaxxWHFvXBPEfbQsUzSqh8VJBq6o2ipKg',
-    appId: '1:453557666577:ios:76e4823ec4ebefb0e002b0',
-    messagingSenderId: '453557666577',
-    projectId: 'ai-diagram-generator',
-    storageBucket: 'ai-diagram-generator.firebasestorage.app',
+    apiKey: 'AIzaSyCXyvEyXwRlXhCBkpT3uPYkYiQd8FCEZ8Y',
+    appId: '1:875770681301:ios:b1eed1804e73a3a6bdcf5c',
+    messagingSenderId: '875770681301',
+    projectId: 'ai-diagram-maker',
+    storageBucket: 'ai-diagram-maker.firebasestorage.app',
     iosBundleId: 'com.example.myFlutterApp',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCC16exf_GXEyXeHtBo6bw6xvIRKTa7U2U',
-    appId: '1:453557666577:web:2ef6106fbe0bbe3fe002b0',
-    messagingSenderId: '453557666577',
-    projectId: 'ai-diagram-generator',
-    authDomain: 'ai-diagram-generator.firebaseapp.com',
-    storageBucket: 'ai-diagram-generator.firebasestorage.app',
-    measurementId: 'G-Q96RZV3DVM',
+    apiKey: 'AIzaSyDWV68FezSBk7R6beMRBgq0e_9tzJxBUao',
+    appId: '1:875770681301:web:7b89a7519761f9c6bdcf5c',
+    messagingSenderId: '875770681301',
+    projectId: 'ai-diagram-maker',
+    authDomain: 'ai-diagram-maker.firebaseapp.com',
+    storageBucket: 'ai-diagram-maker.firebasestorage.app',
+    measurementId: 'G-EN75V9TFE2',
   );
 
 }

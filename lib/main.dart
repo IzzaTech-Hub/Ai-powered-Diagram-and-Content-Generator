@@ -6,14 +6,22 @@ import 'package:my_flutter_app/screens/login_screen.dart';
 import 'package:my_flutter_app/widgets/connection_test_widget.dart';
 import 'screens/content_generator_screen.dart';
 import 'screens/document_generator_screen.dart';
+import 'screens/config_screen.dart';
 import 'constants/app_theme.dart';
 import 'services/api_service.dart';
+import 'services/config_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  
+  // Initialize configuration service first
+  await ConfigService().initialize();
+  
+  // Then initialize API service with config
   ApiService.initialize();
+  
   runApp(const MyApp());
 }
 
@@ -74,6 +82,18 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         title: const Text('AI Content Generator Pro'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ConfigScreen(),
+                ),
+              );
+            },
+            tooltip: 'Configuration',
+          ),
+          IconButton(
             icon: const Icon(Icons.network_check),
             onPressed: () {
               Navigator.push(
@@ -119,3 +139,4 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     );
   }
 }
+
