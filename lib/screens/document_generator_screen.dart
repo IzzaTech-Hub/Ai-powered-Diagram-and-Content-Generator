@@ -518,7 +518,7 @@ class _DocumentGeneratorScreenState extends State<DocumentGeneratorScreen>
                           ],
                         ).createShader(bounds),
                     child: const Text(
-                      'Document Generator',
+                      'AI Documents',
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,

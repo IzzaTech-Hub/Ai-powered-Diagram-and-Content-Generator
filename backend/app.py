@@ -631,7 +631,16 @@ def generate_enhanced_sequence_svg(actors, interactions):
                 f'font-size="12" fill="#374151" text-anchor="middle">{message[:30]}</text>'
             ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_enhanced_state_svg(states, transitions):
     """Generate proper state diagram"""
@@ -714,7 +723,16 @@ def generate_enhanced_state_svg(states, transitions):
                     f'font-size="10" fill="#374151" text-anchor="middle">{trigger[:15]}</text>'
                 ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_enhanced_gantt_svg(tasks):
     """Generate proper Gantt chart"""
@@ -783,7 +801,16 @@ def generate_enhanced_gantt_svg(tasks):
             f'font-size="10" fill="#FFFFFF" text-anchor="middle">{duration}M</text>'
         ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_enhanced_journey_svg(touchpoints):
     """Generate proper user journey map"""
@@ -851,7 +878,16 @@ def generate_enhanced_journey_svg(touchpoints):
             f'font-size="10" fill="#6B7280" text-anchor="middle">{emotion}</text>',
         ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 # Keep all existing functions (generate_enhanced_network_svg, generate_enhanced_architecture_svg, etc.)
 def generate_enhanced_network_svg(data):
@@ -942,7 +978,16 @@ def generate_enhanced_network_svg(data):
                 f'font-size="12" fill="#374151" text-anchor="middle">{label[:20]}</text>'
             ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_enhanced_architecture_svg(data):
     """Generate Architecture Diagram with layered design"""
@@ -1047,7 +1092,16 @@ def generate_enhanced_architecture_svg(data):
                 f'font-size="11" fill="#7C3AED" text-anchor="middle">depends on</text>'
             ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 # Keep all other existing functions (generate_enhanced_erd_svg, generate_enhanced_class_diagram_svg, etc.)
 def generate_enhanced_erd_svg(entities):
@@ -1512,10 +1566,19 @@ def generate_themed_mindmap_svg(central_topic, branches, variation, theme):
         # Connection line
         svg_elements.append(
             f'<line x1="{center_x}" y1="{center_y}" x2="{x}" y2="{y}" '
-            'stroke="{theme["accent"]}" stroke-width="3" opacity="0.6"/>'
+            f'stroke="{theme["accent"]}" stroke-width="3" opacity="0.6"/>'
         )
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_themed_swot_svg(swot_data, variation, theme):
     """Generate SWOT analysis with specific theme and style variation"""
@@ -1578,7 +1641,16 @@ def generate_themed_swot_svg(swot_data, variation, theme):
                     f'font-size="12" fill="#374151">• {str(item)[:30]}</text>'
                 )
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_themed_timeline_svg(events, variation, theme):
     """Generate timeline with specific theme and style variation"""
@@ -1629,7 +1701,7 @@ def generate_themed_timeline_svg(events, variation, theme):
             detail_y = y - 60
             svg_elements.extend([
                 f'<rect x="{x-80}" y="{detail_y-40}" width="160" height="80" '
-                'rx="8" fill="#FFFFFF" stroke="{theme["primary"]}" stroke-width="2"/>',
+                f'rx="8" fill="#FFFFFF" stroke="{theme["primary"]}" stroke-width="2"/>',
                 
                 f'<text x="{x}" y="{detail_y-20}" font-family="Inter, sans-serif" '
                 f'font-size="12" font-weight="700" fill="{theme["primary"]}" text-anchor="middle">{event_name[:20]}</text>',
@@ -1642,7 +1714,7 @@ def generate_themed_timeline_svg(events, variation, theme):
             detail_y = y + 60
             svg_elements.extend([
                 f'<rect x="{x-80}" y="{detail_y}" width="160" height="80" '
-                'rx="8" fill="#FFFFFF" stroke="{theme["primary"]}" stroke-width="2"/>',
+                f'rx="8" fill="#FFFFFF" stroke="{theme["primary"]}" stroke-width="2"/>',
                 
                 f'<text x="{x}" y="{detail_y+20}" font-family="Inter, sans-serif" '
                 f'font-size="12" font-weight="700" fill="{theme["primary"]}" text-anchor="middle">{event_name[:20]}</text>',
@@ -1651,11 +1723,22 @@ def generate_themed_timeline_svg(events, variation, theme):
                 f'font-size="10" fill="#6B7280" text-anchor="middle">{str(event_data)[:25]}</text>',
             ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_themed_sequence_svg(actors, interactions, variation, theme):
     """Generate sequence diagram with specific theme and style variation"""
+    logger.info(f"generate_themed_sequence_svg called with actors: {len(actors) if actors else 0}, interactions: {len(interactions) if interactions else 0}")
     if not actors or not interactions:
+        logger.warning("Missing actors or interactions data, returning error SVG")
         return generate_error_svg("Sequence diagram requires actors and interactions")
 
     width, height = 1400, 800
@@ -1722,16 +1805,25 @@ def generate_themed_sequence_svg(actors, interactions, variation, theme):
             x1 = actor_positions[from_actor]
             x2 = actor_positions[to_actor]
             y = 180 + i * message_height
-            
+
             svg_elements.extend([
                 f'<line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}" '
-                'stroke="{theme["accent"]}" stroke-width="2" marker-end="url(#seqArrow)"/>',
-                
+                f'stroke="{theme["accent"]}" stroke-width="2" marker-end="url(#seqArrow)"/>',
+
                 f'<text x="{(x1+x2)/2}" y="{y-10}" font-family="Inter, sans-serif" '
                 f'font-size="12" fill="#374151" text-anchor="middle">{message[:30]}</text>'
             ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure in themed sequence: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed sequence SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_themed_state_svg(states, transitions, variation, theme):
     """Generate state diagram with specific theme and style variation"""
@@ -1808,13 +1900,22 @@ def generate_themed_state_svg(states, transitions, variation, theme):
                 
                 svg_elements.extend([
                     f'<line x1="{start_x}" y1="{start_y}" x2="{end_x}" y2="{end_y}" '
-                    'stroke="{theme["accent"]}" stroke-width="2" marker-end="url(#stateArrow)"/>',
-                    
+                    f'stroke="{theme["accent"]}" stroke-width="2" marker-end="url(#stateArrow)"/>',
+
                     f'<text x="{(start_x+end_x)/2}" y="{(start_y+end_y)/2-10}" font-family="Inter, sans-serif" '
                     f'font-size="10" fill="#374151" text-anchor="middle">{trigger[:15]}</text>'
                 ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure in themed state: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed state SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_themed_class_svg(classes, variation, theme):
     """Generate class diagram with specific theme and style variation"""
@@ -2073,13 +2174,13 @@ def generate_themed_network_svg(nodes, connections, variation, theme):
     
     svg_elements = [
         '<defs>',
-        '''
+        f'''
         <linearGradient id="networkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
-        '''
+        f'''
         <filter id="networkShadow" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
             <feOffset dx="2" dy="4" result="offset"/>
@@ -2088,7 +2189,7 @@ def generate_themed_network_svg(nodes, connections, variation, theme):
             <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
         ''',
-        '''
+        f'''
         <marker id="networkArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="{theme['accent']}"/>
         </marker>
@@ -2141,13 +2242,22 @@ def generate_themed_network_svg(nodes, connections, variation, theme):
             
             svg_elements.extend([
                 f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
-                'stroke="{theme["accent"]}" stroke-width="3" marker-end="url(#networkArrow)"/>',
+                f'stroke="{theme["accent"]}" stroke-width="3" marker-end="url(#networkArrow)"/>',
                 
                 f'<text x="{(x1+x2)/2}" y="{(y1+y2)/2-10}" font-family="Inter, sans-serif" '
                 f'font-size="12" fill="#374151" text-anchor="middle">{label[:20]}</text>'
             ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_themed_architecture_svg(components, variation, theme):
     """Generate architecture diagram with specific theme and style variation"""
@@ -2158,13 +2268,13 @@ def generate_themed_architecture_svg(components, variation, theme):
     
     svg_elements = [
         '<defs>',
-        '''
+        f'''
         <linearGradient id="archGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
-        '''
+        f'''
         <filter id="archShadow" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
             <feOffset dx="2" dy="4" result="offset"/>
@@ -2249,7 +2359,16 @@ def generate_themed_architecture_svg(components, variation, theme):
                 f'font-size="11" fill="#7C3AED" text-anchor="middle">depends on</text>'
             ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_themed_gantt_svg(tasks, variation, theme):
     """Generate Gantt chart with specific theme and style variation"""
@@ -2318,7 +2437,16 @@ def generate_themed_gantt_svg(tasks, variation, theme):
             f'font-size="10" fill="#FFFFFF" text-anchor="middle">{duration}M</text>'
         ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_themed_journey_svg(stages, variation, theme):
     """Generate user journey map with specific theme and style variation"""
@@ -2386,7 +2514,16 @@ def generate_themed_journey_svg(stages, variation, theme):
             f'font-size="10" fill="#6B7280" text-anchor="middle">{emotion}</text>',
         ])
 
-    return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+    # Ensure SVG has proper structure and add debugging
+    svg_content = f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">\n' + '\n'.join(svg_elements) + '\n</svg>'
+
+    # Validate that we have basic SVG structure
+    if '<defs>' not in svg_content or '<svg' not in svg_content:
+        logger.error(f"Invalid SVG structure: missing defs or svg tag")
+        return generate_error_svg("SVG structure error")
+
+    logger.info(f"Generated themed SVG with {len(svg_content)} chars")
+    return svg_content
 
 def generate_themed_flowchart_svg(steps, variation, theme):
     """Generate themed flowchart with specific style variation"""
@@ -2487,7 +2624,7 @@ def generate_themed_flowchart_svg(steps, variation, theme):
                 # Connection with theme color
                 f'<path d="M{x} {y+node_height} Q{x+30} {mid_y} {x} {next_y-25}" '
                 f'stroke="{theme["accent"]}" stroke-width="4" fill="none" opacity="0.8" '
-                'marker-end="url(#flowchartArrow)"/>',
+                f'marker-end="url(#flowchartArrow)"/>',
             ])
 
     return f'<svg viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto; font-family: Inter, -apple-system, sans-serif;">\n' + '\n'.join(svg_elements) + '\n</svg>'
@@ -3199,9 +3336,12 @@ def generate_variation_svg(diagram_data, diagram_type, variation):
                 theme
             )
         elif diagram_type == "sequence":
+            actors_data = diagram_data.get("actors", {})
+            interactions_data = diagram_data.get("interactions", [])
+            logger.info(f"Sequence diagram data - actors: {len(actors_data)}, interactions: {len(interactions_data)}")
             return generate_themed_sequence_svg(
-                diagram_data.get("actors", {}),
-                diagram_data.get("interactions", []),
+                actors_data,
+                interactions_data,
                 variation_info,
                 theme
             )
