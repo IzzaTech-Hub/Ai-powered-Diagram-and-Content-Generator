@@ -6,6 +6,7 @@ def index():
     return "Backend is running!"
 from flask_cors import CORS
 import socket
+import html
 import json
 import math
 import textwrap
@@ -26,6 +27,54 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def escape_xml_text(text):
+    """
+    Properly escape XML special characters for safe insertion into SVG elements and attributes.
+    
+    This function escapes:
+    - & -> &amp;
+    - < -> &lt;
+    - > -> &gt;
+    - " -> &quot;
+    - ' -> &#x27;
+    
+    Args:
+        text (str): The text to escape
+        
+    Returns:
+        str: The XML-escaped text
+    """
+    if not isinstance(text, str):
+        text = str(text)
+    
+    # Use html.escape for basic escaping, then handle additional cases
+    escaped = html.escape(text, quote=True)
+    
+    # Additional escaping for single quotes in XML attributes
+    escaped = escaped.replace("'", "&#x27;")
+    
+    return escaped
+
+def safe_svg_text(text, max_length=None):
+    """
+    Safely prepare text for SVG insertion with optional length limiting.
+    
+    Args:
+        text (str): The text to prepare
+        max_length (int, optional): Maximum length to truncate to
+        
+    Returns:
+        str: XML-escaped and optionally truncated text
+    """
+    if not isinstance(text, str):
+        text = str(text)
+    
+    # Truncate if max_length is specified
+    if max_length and len(text) > max_length:
+        text = text[:max_length-3] + "..."
+    
+    return escape_xml_text(text)
+
 
 app = Flask(__name__)
 # Enhanced CORS configuration for Flutter mobile and web
@@ -42,16 +91,17 @@ try:
     client = Groq(api_key=GROQ_API_KEY)
     logger.info("Groq client initialized successfully")
 except Exception as e:
-    logger.error(f"Failed to initialize Groq client: {e}")
+    logger.error(f"Failed to initialize Groq client: {str(e)}")
     client = None
 
 def generate_error_svg(message):
     """Generate a simple error SVG when diagram generation fails"""
+    safe_message = safe_svg_text(message, max_length=60)
     return f'''<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" style="max-width: 100%; height: auto;">
         <rect width="400" height="200" fill="#FEF2F2"/>
         <rect x="20" y="20" width="360" height="160" rx="8" fill="#FFFFFF" stroke="#EF4444" stroke-width="2"/>
         <text x="200" y="70" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#DC2626" text-anchor="middle">Diagram Generation Error</text>
-        <text x="200" y="100" font-family="Arial, sans-serif" font-size="12" fill="#7F1D1D" text-anchor="middle">{message}</text>
+        <text x="200" y="100" font-family="Arial, sans-serif" font-size="12" fill="#7F1D1D" text-anchor="middle">{safe_svg_text(safe_message)}</text>
         <text x="200" y="130" font-family="Arial, sans-serif" font-size="10" fill="#7F1D1D" text-anchor="middle">Please try again or contact support</text>
     </svg>'''
 
@@ -62,34 +112,34 @@ def get_fallback_data(diagram_type, user_input):
     if diagram_type == "flowchart":
         return {
             "steps": {
-                "Start": [f"Begin {user_input} process"],
-                "Plan": [f"Plan and prepare for {user_input}"],
-                "Execute": [f"Execute {user_input} activities"],
-                "Review": [f"Review {user_input} results"],
-                "Complete": [f"Complete {user_input} process"]
+                "Start": [f"Begin {safe_svg_text(user_input)} process"],
+                "Plan": [f"Plan and prepare for {safe_svg_text(user_input)}"],
+                "Execute": [f"Execute {safe_svg_text(user_input)} activities"],
+                "Review": [f"Review {safe_svg_text(user_input)} results"],
+                "Complete": [f"Complete {safe_svg_text(user_input)} process"]
             }
         }
     elif diagram_type == "sequence":
         return {
             "actors": {
-                "User": f"Person using {user_input}",
-                "System": f"System handling {user_input}",
-                "Database": f"Data store for {user_input}"
+                "User": f"Person using {safe_svg_text(user_input)}",
+                "System": f"System handling {safe_svg_text(user_input)}",
+                "Database": f"Data store for {safe_svg_text(user_input)}"
             },
             "interactions": [
-                {"from": "User", "to": "System", "message": f"Request {user_input}", "order": 1},
+                {"from": "User", "to": "System", "message": f"Request {safe_svg_text(user_input)}", "order": 1},
                 {"from": "System", "to": "Database", "message": "Query data", "order": 2},
                 {"from": "Database", "to": "System", "message": "Return results", "order": 3},
-                {"from": "System", "to": "User", "message": f"Display {user_input}", "order": 4}
+                {"from": "System", "to": "User", "message": f"Display {safe_svg_text(user_input)}", "order": 4}
             ]
         }
     elif diagram_type == "state":
         return {
             "states": {
-                "Initial": f"Starting state for {user_input}",
-                "Processing": f"Processing {user_input}",
-                "Complete": f"Completed {user_input}",
-                "Error": f"Error in {user_input}"
+                "Initial": f"Starting state for {safe_svg_text(user_input)}",
+                "Processing": f"Processing {safe_svg_text(user_input)}",
+                "Complete": f"Completed {safe_svg_text(user_input)}",
+                "Error": f"Error in {safe_svg_text(user_input)}"
             },
             "transitions": [
                 {"from": "Initial", "to": "Processing", "trigger": "Start", "order": 1},
@@ -101,47 +151,47 @@ def get_fallback_data(diagram_type, user_input):
         return {
             "central_topic": user_input.split()[0] if user_input else "Topic",
             "branches": {
-                "Key Features": [f"Main features of {user_input}"],
-                "Benefits": [f"Benefits of {user_input}"],
-                "Challenges": [f"Challenges with {user_input}"],
-                "Implementation": [f"How to implement {user_input}"],
-                "Future": [f"Future of {user_input}"]
+                "Key Features": [f"Main features of {safe_svg_text(user_input)}"],
+                "Benefits": [f"Benefits of {safe_svg_text(user_input)}"],
+                "Challenges": [f"Challenges with {safe_svg_text(user_input)}"],
+                "Implementation": [f"How to implement {safe_svg_text(user_input)}"],
+                "Future": [f"Future of {safe_svg_text(user_input)}"]
             }
         }
     elif diagram_type == "swot analysis":
         return {
-            "strengths": [f"Strong foundation in {user_input}", f"Clear vision for {user_input}"],
-            "weaknesses": [f"Limited experience with {user_input}", f"Resource constraints for {user_input}"],
-            "opportunities": [f"Growing market for {user_input}", f"Innovation potential in {user_input}"],
-            "threats": [f"Competition in {user_input} space", f"Regulatory changes affecting {user_input}"]
+            "strengths": [f"Strong foundation in {safe_svg_text(user_input)}", f"Clear vision for {safe_svg_text(user_input)}"],
+            "weaknesses": [f"Limited experience with {safe_svg_text(user_input)}", f"Resource constraints for {safe_svg_text(user_input)}"],
+            "opportunities": [f"Growing market for {safe_svg_text(user_input)}", f"Innovation potential in {safe_svg_text(user_input)}"],
+            "threats": [f"Competition in {safe_svg_text(user_input)} space", f"Regulatory changes affecting {safe_svg_text(user_input)}"]
         }
     elif diagram_type == "timeline":
         return {
             "events": {
-                "Phase 1": f"Initial planning for {user_input}",
-                "Phase 2": f"Development of {user_input}",
-                "Phase 3": f"Testing {user_input}",
-                "Phase 4": f"Launch {user_input}",
-                "Phase 5": f"Monitor {user_input}"
+                "Phase 1": f"Initial planning for {safe_svg_text(user_input)}",
+                "Phase 2": f"Development of {safe_svg_text(user_input)}",
+                "Phase 3": f"Testing {safe_svg_text(user_input)}",
+                "Phase 4": f"Launch {safe_svg_text(user_input)}",
+                "Phase 5": f"Monitor {safe_svg_text(user_input)}"
             }
         }
     elif diagram_type == "gantt":
         return {
             "tasks": {
-                "Planning (2 weeks)": {"description": f"Plan {user_input} project", "dependencies": [], "start": 1, "duration": 2},
-                "Design (3 weeks)": {"description": f"Design {user_input} solution", "dependencies": ["Planning"], "start": 3, "duration": 3},
-                "Development (4 weeks)": {"description": f"Develop {user_input}", "dependencies": ["Design"], "start": 6, "duration": 4},
-                "Testing (2 weeks)": {"description": f"Test {user_input}", "dependencies": ["Development"], "start": 10, "duration": 2},
-                "Deployment (1 week)": {"description": f"Deploy {user_input}", "dependencies": ["Testing"], "start": 12, "duration": 1}
+                "Planning (2 weeks)": {"description": f"Plan {safe_svg_text(user_input)} project", "dependencies": [], "start": 1, "duration": 2},
+                "Design (3 weeks)": {"description": f"Design {safe_svg_text(user_input)} solution", "dependencies": ["Planning"], "start": 3, "duration": 3},
+                "Development (4 weeks)": {"description": f"Develop {safe_svg_text(user_input)}", "dependencies": ["Design"], "start": 6, "duration": 4},
+                "Testing (2 weeks)": {"description": f"Test {safe_svg_text(user_input)}", "dependencies": ["Development"], "start": 10, "duration": 2},
+                "Deployment (1 week)": {"description": f"Deploy {safe_svg_text(user_input)}", "dependencies": ["Testing"], "start": 12, "duration": 1}
             }
         }
     elif diagram_type == "journey":
         return {
             "touchpoints": {
-                "Awareness": {"action": f"Learn about {user_input}", "emotion": "Curious", "pain_points": ["Information overload"], "order": 1},
-                "Consideration": {"action": f"Evaluate {user_input}", "emotion": "Analytical", "pain_points": ["Too many options"], "order": 2},
-                "Purchase": {"action": f"Choose {user_input}", "emotion": "Confident", "pain_points": ["Complex process"], "order": 3},
-                "Usage": {"action": f"Use {user_input}", "emotion": "Satisfied", "pain_points": ["Learning curve"], "order": 4}
+                                 "Awareness": {"action": f"Learn about {safe_svg_text(user_input)}", "emotion": "Curious", "pain_points": ["Information overload"], "order": 1},
+                 "Consideration": {"action": f"Evaluate {safe_svg_text(user_input)}", "emotion": "Analytical", "pain_points": ["Too many options"], "order": 2},
+                 "Purchase": {"action": f"Choose {safe_svg_text(user_input)}", "emotion": "Confident", "pain_points": ["Complex process"], "order": 3},
+                 "Usage": {"action": f"Use {safe_svg_text(user_input)}", "emotion": "Satisfied", "pain_points": ["Learning curve"], "order": 4}
             }
         }
     elif diagram_type == "erd":
@@ -175,7 +225,7 @@ def get_fallback_data(diagram_type, user_input):
             "nodes": {
                 "Client": "User device",
                 "Router": "Network router",
-                "Server": f"{user_input} server",
+                "Server": f"{safe_svg_text(user_input)} server",
                 "Database": "Data storage"
             },
             "connections": [
@@ -187,10 +237,10 @@ def get_fallback_data(diagram_type, user_input):
     elif diagram_type == "architecture":
         return {
             "components": {
-                "Presentation Layer": f"User interface for {user_input}",
-                "Business Logic": f"Core logic for {user_input}",
-                "Data Access": f"Data layer for {user_input}",
-                "Database": f"Storage for {user_input}"
+                "Presentation Layer": f"User interface for {safe_svg_text(user_input)}",
+                "Business Logic": f"Core logic for {safe_svg_text(user_input)}",
+                "Data Access": f"Data layer for {safe_svg_text(user_input)}",
+                "Database": f"Storage for {safe_svg_text(user_input)}"
             },
             "relationships": [
                 {"from": "Presentation Layer", "to": "Business Logic", "label": "calls"},
@@ -202,9 +252,9 @@ def get_fallback_data(diagram_type, user_input):
         # Default fallback to flowchart
         return {
             "steps": {
-                "Start": [f"Begin {user_input}"],
-                "Process": [f"Process {user_input}"],
-                "End": [f"Complete {user_input}"]
+                "Start": [f"Begin {safe_svg_text(user_input)}"],
+                "Process": [f"Process {safe_svg_text(user_input)}"],
+                "End": [f"Complete {safe_svg_text(user_input)}"]
             }
         }
 
@@ -236,11 +286,11 @@ def get_enhanced_diagram_prompt(diagram_type, user_input):
     """Generate enhanced, specific prompts for each diagram type"""
     
     enhanced_prompts = {
-        "flowchart": f"""Create a detailed, professional flowchart for: {user_input}
+        "flowchart": f"""Create a detailed, professional flowchart for: {safe_svg_text(user_input)}
 Requirements:
 - Identify 6-8 key sequential steps that are logical and actionable
 - Each step should have a clear, concise description (1-2 sentences)
-- Steps should be specific to the topic "{user_input}"
+- Steps should be specific to the topic "{safe_svg_text(user_input)}"
 - Include decision points or branches if applicable
 - Focus on practical, implementable steps
 - Use professional terminology appropriate for the domain
@@ -248,11 +298,11 @@ Requirements:
 Return ONLY valid JSON in this exact format:
 {{"steps": {{"Step 1 Name": ["Brief description"], "Step 2 Name": ["Brief description"], ...}}}}
 
-Topic: {user_input}""",
+Topic: {safe_svg_text(user_input)}""",
 
-        "sequence": f"""Create a sequence diagram for: {user_input}
+        "sequence": f"""Create a sequence diagram for: {safe_svg_text(user_input)}
 Requirements:
-- Identify 5-7 actors/entities involved in "{user_input}"
+- Identify 5-7 actors/entities involved in "{safe_svg_text(user_input)}"
 - Show message flow and interactions between entities
 - Include timing and order of operations
 - Focus on communication patterns
@@ -261,11 +311,11 @@ Requirements:
 Return ONLY valid JSON in this exact format:
 {{"actors": {{"Actor1": "Role/Description", "Actor2": "Role/Description", ...}}, "interactions": [{{"from": "Actor1", "to": "Actor2", "message": "Message description", "order": 1}}, ...]}}
 
-Topic: {user_input}""",
+Topic: {safe_svg_text(user_input)}""",
 
-        "state": f"""Create a state diagram for: {user_input}
+        "state": f"""Create a state diagram for: {safe_svg_text(user_input)}
 Requirements:
-- Identify 5-7 states in the "{user_input}" process
+- Identify 5-7 states in the "{safe_svg_text(user_input)}" process
 - Show transitions and triggers between states
 - Include initial and final states
 - Focus on state changes and conditions
@@ -274,40 +324,40 @@ Requirements:
 Return ONLY valid JSON in this exact format:
 {{"states": {{"StateName": "State description", ...}}, "transitions": [{{"from": "State1", "to": "State2", "trigger": "Event/Condition", "order": 1}}, ...]}}
 
-Topic: {user_input}""",
+Topic: {safe_svg_text(user_input)}""",
 
-        "mind map": f"""Create a comprehensive mind map for: {user_input}
+        "mind map": f"""Create a comprehensive mind map for: {safe_svg_text(user_input)}
 Requirements:
-- Central topic should be concise and clear (1-3 words) related to "{user_input}"
+- Central topic should be concise and clear (1-3 words) related to "{safe_svg_text(user_input)}"
 - Create 6-8 main branches representing key aspects or categories
 - Each branch should have a relevant concept, detail, or subtopic
-- Focus on logical categorization and relationships specific to "{user_input}"
+- Focus on logical categorization and relationships specific to "{safe_svg_text(user_input)}"
 - Use professional terminology appropriate for the domain
 - Make branches comprehensive and meaningful
 
 Return ONLY valid JSON in this exact format:
 {{"central_topic": "Main Topic", "branches": {{"Branch 1": ["Concept"], "Branch 2": ["Concept"], ...}}}}
 
-Topic: {user_input}""",
+Topic: {safe_svg_text(user_input)}""",
 
-        "swot analysis": f"""Create a thorough SWOT analysis for: {user_input}
+        "swot analysis": f"""Create a thorough SWOT analysis for: {safe_svg_text(user_input)}
 Requirements:
 - Provide 5-7 items per category (Strengths, Weaknesses, Opportunities, Threats)
-- Be specific and actionable, directly related to "{user_input}"
+- Be specific and actionable, directly related to "{safe_svg_text(user_input)}"
 - Consider both internal factors (strengths/weaknesses) and external factors (opportunities/threats)
 - Use professional business terminology
-- Focus on realistic, relevant factors specific to the context of "{user_input}"
+- Focus on realistic, relevant factors specific to the context of "{safe_svg_text(user_input)}"
 - Make each point detailed and meaningful
 
 Return ONLY valid JSON in this exact format:
 {{"strengths": ["Item 1", "Item 2", ...], "weaknesses": ["Item 1", "Item 2", ...], "opportunities": ["Item 1", "Item 2", ...], "threats": ["Item 1", "Item 2", ...]}}
 
-Topic: {user_input}""",
+Topic: {safe_svg_text(user_input)}""",
 
-        "timeline": f"""Create a realistic timeline for: {user_input}
+        "timeline": f"""Create a realistic timeline for: {safe_svg_text(user_input)}
 Requirements:
 - Identify 6-8 key phases, milestones, or time periods
-- Use logical sequence or chronological order appropriate for "{user_input}"
+- Use logical sequence or chronological order appropriate for "{safe_svg_text(user_input)}"
 - Each event should be clearly described and actionable
 - Include realistic timeframes or phases (weeks, months, quarters as appropriate)
 - Focus on chronological progression specific to the context
@@ -316,12 +366,12 @@ Requirements:
 Return ONLY valid JSON in this exact format:
 {{"events": {{"Phase 1/Timeframe": "Description", "Phase 2/Timeframe": "Description", ...}}}}
 
-Topic: {user_input}""",
+Topic: {safe_svg_text(user_input)}""",
 
-        "gantt": f"""Create a Gantt chart structure for: {user_input}
+        "gantt": f"""Create a Gantt chart structure for: {safe_svg_text(user_input)}
 Requirements:
 - Identify 6-8 parallel and sequential tasks
-- Include duration estimates for "{user_input}"
+- Include duration estimates for "{safe_svg_text(user_input)}"
 - Show task dependencies and overlaps
 - Focus on resource allocation
 - Use project management terminology
@@ -329,24 +379,24 @@ Requirements:
 Return ONLY valid JSON in this exact format:
 {{"tasks": {{"Task Name (Duration)": {{"description": "Task description", "dependencies": ["Dependency1"], "start": 1, "duration": 4}}, ...}}}}
 
-Topic: {user_input}""",
+Topic: {safe_svg_text(user_input)}""",
 
-        "journey": f"""Create a user journey map for: {user_input}
+        "journey": f"""Create a user journey map for: {safe_svg_text(user_input)}
 Requirements:
-- Identify 6-8 touchpoints in the "{user_input}" experience
-- Include user emotions and pain points
+- Identify 6-8 touchpoints in the "{safe_svg_text(user_input)}" experience
+- Include user safe_svg_text(emotion)s and pain points
 - Show user actions and system responses
 - Focus on user experience optimization
 - Use UX terminology
 
 Return ONLY valid JSON in this exact format:
-{{"touchpoints": {{"Touchpoint Name": {{"action": "User action", "emotion": "User feeling", "pain_points": ["Issue 1"], "order": 1}}, ...}}}}
+{{"touchpoints": {{"Touchpoint Name": {{"action": "User action", "safe_svg_text(emotion)": "User feeling", "pain_points": ["Issue 1"], "order": 1}}, ...}}}}
 
-Topic: {user_input}""",
+Topic: {safe_svg_text(user_input)}""",
 
-        "erd": f"""Create an Entity Relationship Diagram for: {user_input}
+        "erd": f"""Create an Entity Relationship Diagram for: {safe_svg_text(user_input)}
 Requirements:
-- Identify 4-6 main entities for "{user_input}" system
+- Identify 4-6 main entities for "{safe_svg_text(user_input)}" system
 - List 4-6 attributes per entity
 - Consider primary keys and relationships
 - Use database design principles
@@ -355,11 +405,11 @@ Requirements:
 Return ONLY valid JSON in this exact format:
 {{"entities": {{"EntityName": ["attribute1", "attribute2", ...], ...}}}}
 
-Topic: {user_input}""",
+Topic: {safe_svg_text(user_input)}""",
 
-        "class": f"""Create a class diagram for: {user_input}
+        "class": f"""Create a class diagram for: {safe_svg_text(user_input)}
 Requirements:
-- Identify 4-6 classes for "{user_input}" system
+- Identify 4-6 classes for "{safe_svg_text(user_input)}" system
 - List 3-5 attributes and methods per class
 - Show inheritance and composition relationships
 - Use object-oriented design principles
@@ -368,11 +418,11 @@ Requirements:
 Return ONLY valid JSON in this exact format:
 {{"classes": {{"ClassName": {{"attributes": ["attr: type", ...], "methods": ["method()", ...]}}, ...}}}}
 
-Topic: {user_input}""",
+Topic: {safe_svg_text(user_input)}""",
 
-        "network": f"""Create a network diagram for: {user_input}
+        "network": f"""Create a network diagram for: {safe_svg_text(user_input)}
 Requirements:
-- Identify 5-7 network components for "{user_input}"
+- Identify 5-7 network components for "{safe_svg_text(user_input)}"
 - Show connections and protocols
 - Include security and performance considerations
 - Use networking terminology
@@ -381,11 +431,11 @@ Requirements:
 Return ONLY valid JSON in this exact format:
 {{"nodes": {{"NodeName": "Type/Role", ...}}, "connections": [{{"from": "Node1", "to": "Node2", "label": "Connection"}}], ...}}
 
-Topic: {user_input}""",
+Topic: {safe_svg_text(user_input)}""",
 
-        "architecture": f"""Create a system architecture diagram for: {user_input}
+        "architecture": f"""Create a system architecture diagram for: {safe_svg_text(user_input)}
 Requirements:
-- Identify 5-7 architectural components for "{user_input}"
+- Identify 5-7 architectural components for "{safe_svg_text(user_input)}"
 - Show layers and service boundaries
 - Include data flow and dependencies
 - Use architectural patterns
@@ -394,7 +444,7 @@ Requirements:
 Return ONLY valid JSON in this exact format:
 {{"components": {{"ComponentName": "Purpose/Type", ...}}, "relationships": [{{"from": "Comp1", "to": "Comp2", "label": "Relationship"}}], ...}}
 
-Topic: {user_input}""",
+Topic: {safe_svg_text(user_input)}""",
     }
     
     return enhanced_prompts.get(diagram_type, enhanced_prompts["flowchart"])
@@ -524,7 +574,7 @@ def validate_diagram_json(json_data, diagram_type):
                     raise ValueError("ERD requires 'entities' dictionary")
             for entity, attributes in json_data.get("entities", {}).items():
                 if not isinstance(attributes, list):
-                    raise ValueError(f"Entity '{entity}' attributes must be a list")
+                    raise ValueError(f"Entity '{safe_svg_text(entity)}' attributes must be a list")
         
         # Special handling for Class diagrams
         elif diagram_type == "class":
@@ -532,7 +582,7 @@ def validate_diagram_json(json_data, diagram_type):
                 raise ValueError("Class diagram requires 'classes' dictionary")
             for cls, members in json_data.get("classes", {}).items():
                 if not isinstance(members, dict) or not all(k in members for k in ["attributes", "methods"]):
-                    raise ValueError(f"Class '{cls}' must have 'attributes' and 'methods'")
+                    raise ValueError(f"Class '{safe_svg_text(cls)}' must have 'attributes' and 'methods'")
         
         # Special handling for Network diagrams
         elif diagram_type == "network":
@@ -569,17 +619,8 @@ def generate_enhanced_sequence_svg(actors, interactions):
     
     svg_elements = [
         '<defs>',
-        f'''
-        <linearGradient id="actorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
-        </linearGradient>
-        ''',
-        f'''
-        <marker id="seqArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#4B5563"/>
-        </marker>
-        ''',
+        '<linearGradient id="actorGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1"/><stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1"/></linearGradient>',
+        '<marker id="seqArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#4B5563"/></marker>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#F8FAFC"/>',
@@ -601,10 +642,10 @@ def generate_enhanced_sequence_svg(actors, interactions):
             'rx="8" fill="url(#actorGrad)" stroke="#FFFFFF" stroke-width="2"/>',
             
             f'<text x="{x}" y="{y+25}" font-family="Inter, sans-serif" '
-            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{actor_name[:12]}</text>',
+            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(actor_name, 12)}</text>',
             
             f'<text x="{x}" y="{y+45}" font-family="Inter, sans-serif" '
-            f'font-size="10" fill="#E5E7EB" text-anchor="middle">{actor_desc[:15]}</text>',
+            f'font-size="10" fill="#E5E7EB" text-anchor="middle">{safe_svg_text(actor_desc, 15)}</text>',
             
             # Lifeline
             f'<line x1="{x}" y1="{y+actor_height}" x2="{x}" y2="{height-50}" '
@@ -628,7 +669,7 @@ def generate_enhanced_sequence_svg(actors, interactions):
                 'stroke="#4B5563" stroke-width="2" marker-end="url(#seqArrow)"/>',
                 
                 f'<text x="{(x1+x2)/2}" y="{y-10}" font-family="Inter, sans-serif" '
-                f'font-size="12" fill="#374151" text-anchor="middle">{message[:30]}</text>'
+                f'font-size="12" fill="#374151" text-anchor="middle">{safe_svg_text(message, 30)}</text>'
             ])
 
     # Ensure SVG has proper structure and add debugging
@@ -659,17 +700,8 @@ def generate_enhanced_state_svg(states, transitions):
     
     svg_elements = [
         '<defs>',
-        f'''
-        <linearGradient id="stateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#DC2626;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#EF4444;stop-opacity:1" />
-        </linearGradient>
-        ''',
-        f'''
-        <marker id="stateArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#4B5563"/>
-        </marker>
-        ''',
+        '<linearGradient id="stateGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#DC2626;stop-opacity:1"/><stop offset="100%" style="stop-color:#EF4444;stop-opacity:1"/></linearGradient>',
+        '<marker id="stateArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#4B5563"/></marker>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#F8FAFC"/>',
@@ -691,10 +723,10 @@ def generate_enhanced_state_svg(states, transitions):
             f'<circle cx="{x}" cy="{y}" r="{state_radius}" fill="url(#stateGrad)" stroke="#FFFFFF" stroke-width="3"/>',
             
             f'<text x="{x}" y="{y-10}" font-family="Inter, sans-serif" '
-            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{state_name[:12]}</text>',
+            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(state_name, 12)}</text>',
             
             f'<text x="{x}" y="{y+10}" font-family="Inter, sans-serif" '
-            f'font-size="10" fill="#E5E7EB" text-anchor="middle">{state_desc[:20]}</text>',
+            f'font-size="10" fill="#E5E7EB" text-anchor="middle">{safe_svg_text(state_desc, 20)}</text>',
         ])
 
     # Draw transitions
@@ -720,7 +752,7 @@ def generate_enhanced_state_svg(states, transitions):
                     'stroke="#4B5563" stroke-width="2" marker-end="url(#stateArrow)"/>',
                     
                     f'<text x="{(start_x+end_x)/2}" y="{(start_y+end_y)/2-10}" font-family="Inter, sans-serif" '
-                    f'font-size="10" fill="#374151" text-anchor="middle">{trigger[:15]}</text>'
+                    f'font-size="10" fill="#374151" text-anchor="middle">{safe_svg_text(trigger, 15)}</text>'
                 ])
 
     # Ensure SVG has proper structure and add debugging
@@ -746,12 +778,7 @@ def generate_enhanced_gantt_svg(tasks):
     
     svg_elements = [
         '<defs>',
-        '''
-        <linearGradient id="ganttGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:#9333EA;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#A855F7;stop-opacity:1" />
-        </linearGradient>
-        ''',
+        '<linearGradient id="ganttGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#9333EA;stop-opacity:1"/><stop offset="100%" style="stop-color:#A855F7;stop-opacity:1"/></linearGradient>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#F8FAFC"/>',
@@ -786,7 +813,7 @@ def generate_enhanced_gantt_svg(tasks):
         # Task label
         svg_elements.append(
             f'<text x="20" y="{y+task_height//2+5}" font-family="Inter, sans-serif" '
-            f'font-size="12" fill="#374151" font-weight="600">{task_name[:25]}</text>'
+            f'font-size="12" fill="#374151" font-weight="600">{safe_svg_text(task_name, 25)}</text>'
         )
         
         # Task bar
@@ -826,12 +853,7 @@ def generate_enhanced_journey_svg(touchpoints):
     
     svg_elements = [
         '<defs>',
-        '''
-        <linearGradient id="journeyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#BE185D;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#DB2777;stop-opacity:1" />
-        </linearGradient>
-        ''',
+        '<linearGradient id="journeyGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#BE185D;stop-opacity:1"/><stop offset="100%" style="stop-color:#DB2777;stop-opacity:1"/></linearGradient>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#F8FAFC"/>',
@@ -869,13 +891,13 @@ def generate_enhanced_journey_svg(touchpoints):
             'rx="8" fill="#FFFFFF" stroke="#DB2777" stroke-width="2"/>',
             
             f'<text x="{x}" y="{y-120}" font-family="Inter, sans-serif" '
-            f'font-size="12" font-weight="700" fill="#DB2777" text-anchor="middle">{touchpoint_name[:15]}</text>',
+            f'font-size="12" font-weight="700" fill="#DB2777" text-anchor="middle">{safe_svg_text(touchpoint_name, 15)}</text>',
             
             f'<text x="{x}" y="{y-100}" font-family="Inter, sans-serif" '
-            f'font-size="10" fill="#374151" text-anchor="middle">{action[:20]}</text>',
+            f'font-size="10" fill="#374151" text-anchor="middle">{safe_svg_text(action, 20)}</text>',
             
             f'<text x="{x}" y="{y-80}" font-family="Inter, sans-serif" '
-            f'font-size="10" fill="#6B7280" text-anchor="middle">{emotion}</text>',
+            f'font-size="10" fill="#6B7280" text-anchor="middle">{safe_svg_text(emotion)}</text>',
         ])
 
     # Ensure SVG has proper structure and add debugging
@@ -904,26 +926,9 @@ def generate_enhanced_network_svg(data):
     theme = data.get("theme", {})
     svg_elements = [
         '<defs>',
-        f'''
-        <linearGradient id="networkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme.get('primary', '#1E3A8A')};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme.get('secondary', '#3B82F6')};stop-opacity:1" />
-        </linearGradient>
-        ''',
-        f'''
-        <filter id="networkShadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
-            <feOffset dx="2" dy="4" result="offset"/>
-            <feFlood flood-color="#000000" flood-opacity="0.2"/>
-            <feComposite in2="offset" operator="in"/>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        ''',
-        f'''
-        <marker id="networkArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="{theme.get('accent', '#4B5563')}"/>
-        </marker>
-        ''',
+        f'<linearGradient id="networkGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{theme.get("primary", "#1E3A8A")};stop-opacity:1"/><stop offset="100%" style="stop-color:{theme.get("secondary", "#3B82F6")};stop-opacity:1"/></linearGradient>',
+        f'<filter id="networkShadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dx="2" dy="4" result="offset"/><feFlood flood-color="#000000" flood-opacity="0.2"/><feComposite in2="offset" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
+        f'<marker id="networkArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="{theme.get("accent", "#4B5563")}"/></marker>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#F8FAFC"/>',
@@ -954,10 +959,10 @@ def generate_enhanced_network_svg(data):
             f'rx="12" fill="url(#networkGrad)" filter="url(#networkShadow)" stroke="#FFFFFF" stroke-width="2"/>',
             
             f'<text x="{x}" y="{y-10}" font-family="Inter, sans-serif" '
-            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{node_name[:12]}</text>',
+            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(node_name, 12)}</text>',
             
             f'<text x="{x}" y="{y+8}" font-family="Inter, sans-serif" '
-            f'font-size="11" fill="#E5E7EB" text-anchor="middle">{node_type[:15]}</text>',
+            f'font-size="11" fill="#E5E7EB" text-anchor="middle">{safe_svg_text(node_type, 15)}</text>',
         ])
 
     # Draw connections
@@ -975,7 +980,7 @@ def generate_enhanced_network_svg(data):
                 'stroke="#4B5563" stroke-width="3" marker-end="url(#networkArrow)"/>',
                 
                 f'<text x="{(x1+x2)/2}" y="{(y1+y2)/2-10}" font-family="Inter, sans-serif" '
-                f'font-size="12" fill="#374151" text-anchor="middle">{label[:20]}</text>'
+                f'font-size="12" fill="#374151" text-anchor="middle">{safe_svg_text(label, 20)}</text>'
             ])
 
     # Ensure SVG has proper structure and add debugging
@@ -1001,21 +1006,8 @@ def generate_enhanced_architecture_svg(data):
     
     svg_elements = [
         '<defs>',
-        '''
-        <linearGradient id="archGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#7C3AED;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#A855F7;stop-opacity:1" />
-        </linearGradient>
-        ''',
-        '''
-        <filter id="archShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
-            <feOffset dx="2" dy="4" result="offset"/>
-            <feFlood flood-color="#000000" flood-opacity="0.15"/>
-            <feComposite in2="offset" operator="in"/>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        ''',
+        '<linearGradient id="archGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#7C3AED;stop-opacity:1"/><stop offset="100%" style="stop-color:#A855F7;stop-opacity:1"/></linearGradient>',
+        '<filter id="archShadow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="3"/><feOffset dx="2" dy="4" result="offset"/><feFlood flood-color="#000000" flood-opacity="0.15"/><feComposite in2="offset" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#FAFAFA"/>',
@@ -1047,7 +1039,7 @@ def generate_enhanced_architecture_svg(data):
         
         svg_elements.append(
             f'<text x="70" y="{layer_y}" font-family="Inter, sans-serif" '
-            f'font-size="14" font-weight="600" fill="#7C3AED">{layer_name} Layer</text>'
+            f'font-size="14" font-weight="600" fill="#7C3AED">{safe_svg_text(layer_name)} Layer</text>'
         )
         
         # Place components in this layer
@@ -1069,10 +1061,10 @@ def generate_enhanced_architecture_svg(data):
                     f'rx="12" fill="url(#archGrad)" filter="url(#archShadow)" stroke="#FFFFFF" stroke-width="2"/>',
                     
                     f'<text x="{x + component_width//2}" y="{y + 25}" font-family="Inter, sans-serif" '
-                    f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{comp_name[:18]}</text>',
+                    f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(comp_name, 18)}</text>',
                     
                     f'<text x="{x + component_width//2}" y="{y + 45}" font-family="Inter, sans-serif" '
-                    f'font-size="11" fill="#E5E7EB" text-anchor="middle">{comp_purpose[:25]}</text>',
+                    f'font-size="11" fill="#E5E7EB" text-anchor="middle">{safe_svg_text(comp_purpose, 25)}</text>',
                 ])
 
     # Draw relationships
@@ -1120,33 +1112,11 @@ def generate_enhanced_erd_svg(entities):
     svg_elements = [
         '<defs>',
         # Premium gradients for different entity types
-        '''
-        <linearGradient id="entityGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
-        </linearGradient>
-        ''',
-        '''
-        <linearGradient id="relationshipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#10B981;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
-        </linearGradient>
-        ''',
+        '<linearGradient id="entityGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1"/><stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1"/></linearGradient>',
+        '<linearGradient id="relationshipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#10B981;stop-opacity:1"/><stop offset="100%" style="stop-color:#059669;stop-opacity:1"/></linearGradient>',
         # Arrow marker for relationships
-        '''
-        <marker id="erdArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#4B5563"/>
-        </marker>
-        ''',
-        '''
-        <filter id="premiumShadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
-            <feOffset dx="2" dy="4" result="offset"/>
-            <feFlood flood-color="#000000" flood-opacity="0.2"/>
-            <feComposite in2="offset" operator="in"/>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        ''',
+        '<marker id="erdArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#4B5563"/></marker>',
+        '<filter id="premiumShadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dx="2" dy="4" result="offset"/><feFlood flood-color="#000000" flood-opacity="0.2"/><feComposite in2="offset" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
         '</defs>',
         
         # Background
@@ -1169,7 +1139,7 @@ def generate_enhanced_erd_svg(entities):
         angle = math.radians(i * angle_step)
         x = center_x + radius * math.cos(angle)
         y = center_y + radius * math.sin(angle)
-        entity_positions[entity_name] = (x, y)
+        entity_positions[safe_svg_text(entity_name)] = (x, y)
         
         # Entity box
         svg_elements.extend([
@@ -1178,7 +1148,7 @@ def generate_enhanced_erd_svg(entities):
             
             # Entity name
             f'<text x="{x}" y="{y-node_height//2+30}" font-family="Inter, -apple-system, sans-serif" '
-            f'font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">{entity_name}</text>',
+            f'font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(entity_name)}</text>',
             
             # Attributes
             f'<rect x="{x-node_width//2+10}" y="{y-node_height//2+40}" width="{node_width-20}" height="{node_height-50}" '
@@ -1189,7 +1159,7 @@ def generate_enhanced_erd_svg(entities):
         for j, attr in enumerate(attributes[:3]):
             svg_elements.append(
                 f'<text x="{x}" y="{y-node_height//2+60+j*20}" font-family="Inter, -apple-system, sans-serif" '
-                f'font-size="12" fill="#FFFFFF" text-anchor="middle">{attr[:20]}</text>'
+                f'font-size="12" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(attr, 20)}</text>'
             )
         
         if len(attributes) > 3:
@@ -1238,27 +1208,10 @@ def generate_enhanced_class_diagram_svg(classes):
     svg_elements = [
         '<defs>',
         # Class box gradient
-        '''
-        <linearGradient id="classGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#6366F1;stop-opacity:1" />
-        </linearGradient>
-        ''',
+        '<linearGradient id="classGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1"/><stop offset="100%" style="stop-color:#6366F1;stop-opacity:1"/></linearGradient>',
         # Inheritance arrow
-        '''
-        <marker id="inheritanceArrow" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
-            <polygon points="0,0 12,6 0,12 6,6" fill="#1F2937" opacity="0.8"/>
-        </marker>
-        ''',
-        '''
-        <filter id="premiumShadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
-            <feOffset dx="2" dy="4" result="offset"/>
-            <feFlood flood-color="#000000" flood-opacity="0.2"/>
-            <feComposite in2="offset" operator="in"/>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        ''',
+        '<marker id="inheritanceArrow" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto"><polygon points="0,0 12,6 0,12 6,6" fill="#1F2937" opacity="0.8"/></marker>',
+        '<filter id="premiumShadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dx="2" dy="4" result="offset"/><feFlood flood-color="#000000" flood-opacity="0.2"/><feComposite in2="offset" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
         '</defs>',
         
         # Background
@@ -1281,7 +1234,7 @@ def generate_enhanced_class_diagram_svg(classes):
         row = i // cols
         x = (col + 1) * col_width
         y = 100 + row * row_height
-        class_positions[class_name] = (x, y)
+        class_positions[safe_svg_text(class_name)] = (x, y)
         
         # Calculate class box height based on content
         attr_count = len(members.get("attributes", []))
@@ -1299,7 +1252,7 @@ def generate_enhanced_class_diagram_svg(classes):
             
             # Class name
             f'<text x="{x}" y="{y+28}" font-family="Inter, -apple-system, sans-serif" '
-            f'font-size="16" font-weight="700" fill="#1F2937" text-anchor="middle">{class_name}</text>',
+            f'font-size="16" font-weight="700" fill="#1F2937" text-anchor="middle">{safe_svg_text(class_name)}</text>',
             
             # Separator line
             f'<line x1="{x-class_width//2}" y1="{y+40}" x2="{x+class_width//2}" y2="{y+40}" '
@@ -1315,7 +1268,7 @@ def generate_enhanced_class_diagram_svg(classes):
         for j, attr in enumerate(members.get("attributes", [])[:5]):  # Limit to 5 attributes
             svg_elements.append(
                 f'<text x="{x-class_width//2+15}" y="{y+80+j*16}" font-family="Inter, -apple-system, sans-serif" '
-                f'font-size="12" fill="#FFFFFF">{attr[:20]}</text>'
+                f'font-size="12" fill="#FFFFFF">{safe_svg_text(attr, 20)}</text>'
             )
         
         # Methods section
@@ -1327,7 +1280,7 @@ def generate_enhanced_class_diagram_svg(classes):
         for k, method in enumerate(members.get("methods", [])[:5]):  # Limit to 5 methods
             svg_elements.append(
                 f'<text x="{x-class_width//2+15}" y="{y+100+len(members.get("attributes", []))*16+k*16}" '
-                f'font-family="Inter, -apple-system, sans-serif" font-size="12" fill="#FFFFFF">{method[:20]}()</text>'
+                f'font-family="Inter, -apple-system, sans-serif" font-size="12" fill="#FFFFFF">{safe_svg_text(method, 20)}()</text>'
             )
     
     # Add inheritance relationships (simplified example)
@@ -1375,51 +1328,24 @@ def generate_enhanced_flowchart_svg(steps):
     svg_elements = [
         '<defs>',
         # Premium gradients
-        *[f'''
-        <linearGradient id="nodeGrad{i+1}" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{colors[i % len(colors)]['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{colors[i % len(colors)]['secondary']};stop-opacity:1" />
-        </linearGradient>
-        ''' for i in range(len(steps))],
+        *[f'<linearGradient id="nodeGrad{i+1}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{colors[i % len(colors)]["primary"]};stop-opacity:1"/><stop offset="100%" style="stop-color:{colors[i % len(colors)]["secondary"]};stop-opacity:1"/></linearGradient>' for i in range(len(steps))],
 
         # Ultra-premium shadow filter
-        '''
-        <filter id="premiumShadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
-            <feOffset dx="3" dy="8" result="offset"/>
-            <feFlood flood-color="#000000" flood-opacity="0.25"/>
-            <feComposite in2="offset" operator="in"/>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        ''',
+        '<filter id="premiumShadow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur in="SourceAlpha" stdDeviation="6"/><feOffset dx="3" dy="8" result="offset"/><feFlood flood-color="#000000" flood-opacity="0.25"/><feComposite in2="offset" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
 
         # Glow effect
-        '''
-        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        ''',
+        '<filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
 
         # Enhanced arrow marker
-        '''
-        <marker id="premiumArrow" markerWidth="16" markerHeight="12" refX="15" refY="6" orient="auto">
-            <polygon points="0 0, 16 6, 0 12" fill="#4a5568" opacity="0.8"/>
-        </marker>
-        ''',
+        '<marker id="premiumArrow" markerWidth="16" markerHeight="12" refX="15" refY="6" orient="auto"><polygon points="0 0, 16 6, 0 12" fill="#4a5568" opacity="0.8"/></marker>',
+        
+        # Background pattern
+        '<pattern id="bgPattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="20" cy="20" r="1" fill="#e2e8f0"/></pattern>',
+        
         '</defs>',
 
         # Premium background with subtle pattern
         f'<rect width="{width}" height="{height}" fill="#f8fafc"/>',
-
-        # Background pattern
-        '''
-        <defs>
-            <pattern id="bgPattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-                <circle cx="20" cy="20" r="1" fill="#e2e8f0"/>
-            </pattern>
-        </defs>
-        ''',
     ]
 
     for i, (step_name, step_content) in enumerate(steps.items()):
@@ -1440,7 +1366,7 @@ def generate_enhanced_flowchart_svg(steps):
 
             # Inner highlight
             f'<rect x="{x-node_width//2+4}" y="{y+4}" width="{node_width-8}" height="3" '
-            'rx="2" fill="rgba(255,255,255,0.5)"/>',
+            f'rx="2" fill="rgba(255,255,255,0.5)"/>',
 
             # Step number badge
             f'<circle cx="{x-node_width//2+25}" cy="{y+25}" r="15" fill="rgba(255,255,255,0.3)"/>',
@@ -1461,7 +1387,7 @@ def generate_enhanced_flowchart_svg(steps):
             svg_elements.append(
                 f'<text x="{x}" y="{y+35+j*20}" font-family="Inter, -apple-system, sans-serif" '
                 f'font-size="18" font-weight="700" fill="white" text-anchor="middle" '
-                f'letter-spacing="0.5px">{line}</text>'
+                f'letter-spacing="0.5px">{safe_svg_text(line)}</text>'
             )
 
         # Description
@@ -1469,7 +1395,7 @@ def generate_enhanced_flowchart_svg(steps):
         for j, line in enumerate(desc_lines):
             svg_elements.append(
                 f'<text x="{x}" y="{desc_start_y+j*16}" font-family="Inter, -apple-system, sans-serif" '
-                f'font-size="13" fill="rgba(255,255,255,0.9)" text-anchor="middle">{line}</text>'
+                f'font-size="13" fill="rgba(255,255,255,0.9)" text-anchor="middle">{safe_svg_text(line)}</text>'
             )
 
         # Premium connector with animation-ready design
@@ -1508,35 +1434,22 @@ def generate_themed_mindmap_svg(central_topic, branches, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
-        <linearGradient id="mindmapGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
-        </linearGradient>
-        ''',
-        f'''
-        <filter id="mindmapShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
-            <feOffset dx="2" dy="4" result="offset"/>
-            <feFlood flood-color="#000000" flood-opacity="0.15"/>
-            <feComposite in2="offset" operator="in"/>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        ''',
+        f'<linearGradient id="mindmapGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{escape_xml_text(theme["primary"])};stop-opacity:1"/><stop offset="100%" style="stop-color:{escape_xml_text(theme["secondary"])};stop-opacity:1"/></linearGradient>',
+        f'<filter id="mindmapShadow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="3"/><feOffset dx="2" dy="4" result="offset"/><feFlood flood-color="#000000" flood-opacity="0.15"/><feComposite in2="offset" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#F8FAFC"/>',
         
         # Title
         f'<text x="{width//2}" y="40" font-family="Inter, sans-serif" '
-        f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">{variation["name"]}</text>',
+        f'font-size="28" font-weight="800" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">{escape_xml_text(variation["name"])}</text>',
     ]
 
     # Central topic
     svg_elements.extend([
         f'<circle cx="{center_x}" cy="{center_y}" r="60" fill="url(#mindmapGrad)" filter="url(#mindmapShadow)"/>',
         f'<text x="{center_x}" y="{center_y-10}" font-family="Inter, sans-serif" '
-        f'font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">{central_topic[:15]}</text>',
+        f'font-size="18" font-weight="700" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(central_topic, 15)}</text>',
         f'<text x="{center_x}" y="{center_y+15}" font-family="Inter, sans-serif" '
         f'font-size="12" fill="#E5E7EB" text-anchor="middle">Central Topic</text>',
     ])
@@ -1557,7 +1470,7 @@ def generate_themed_mindmap_svg(central_topic, branches, variation, theme):
             'rx="8" fill="url(#mindmapGrad)" filter="url(#mindmapShadow)"/>',
             
             f'<text x="{x}" y="{y-5}" font-family="Inter, sans-serif" '
-            f'font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">{branch_name[:12]}</text>',
+            f'font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(branch_name, 12)}</text>',
             
             f'<text x="{x}" y="{y+15}" font-family="Inter, sans-serif" '
             f'font-size="10" fill="#E5E7EB" text-anchor="middle">{concepts[0][:15] if concepts else ""}</text>',
@@ -1566,7 +1479,7 @@ def generate_themed_mindmap_svg(central_topic, branches, variation, theme):
         # Connection line
         svg_elements.append(
             f'<line x1="{center_x}" y1="{center_y}" x2="{x}" y2="{y}" '
-            f'stroke="{theme["accent"]}" stroke-width="3" opacity="0.6"/>'
+            f'stroke="{escape_xml_text(theme["accent"])}" stroke-width="3" opacity="0.6"/>'
         )
 
     # Ensure SVG has proper structure and add debugging
@@ -1591,19 +1504,14 @@ def generate_themed_swot_svg(swot_data, variation, theme):
     
     svg_elements = [
         '<defs>',
-        '''
-        <linearGradient id="swotGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
-        </linearGradient>
-        ''',
+        f'<linearGradient id="swotGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{escape_xml_text(theme["primary"])};stop-opacity:1"/><stop offset="100%" style="stop-color:{escape_xml_text(theme["secondary"])};stop-opacity:1"/></linearGradient>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#F8FAFC"/>',
         
         # Title
         f'<text x="{width//2}" y="40" font-family="Inter, sans-serif" '
-        f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">{variation["name"]}</text>',
+        f'font-size="28" font-weight="800" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">{escape_xml_text(variation["name"])}</text>',
         
         # Grid lines
         f'<line x1="{quadrant_width}" y1="80" x2="{quadrant_width}" y2="{height-50}" stroke="#9CA3AF" stroke-width="2"/>',
@@ -1625,10 +1533,10 @@ def generate_themed_swot_svg(swot_data, variation, theme):
         # Quadrant title
         svg_elements.extend([
             f'<text x="{x + quadrant_width//2}" y="{y+30}" font-family="Inter, sans-serif" '
-            f'font-size="20" font-weight="700" fill="{quadrant["color"]}" text-anchor="middle">{quadrant["title"]}</text>',
+            f'font-size="20" font-weight="700" fill="{escape_xml_text(quadrant["color"])}" text-anchor="middle">{escape_xml_text(quadrant["title"])}</text>',
             
             f'<rect x="{x+20}" y="{y+40}" width="{quadrant_width-40}" height="{quadrant_height-60}" '
-            f'rx="8" fill="rgba({quadrant["color"]}, 0.1)" stroke="{quadrant["color"]}" stroke-width="1"/>',
+            f'rx="8" fill="rgba({escape_xml_text(quadrant["color"])}, 0.1)" stroke="{escape_xml_text(quadrant["color"])}" stroke-width="1"/>',
         ])
         
         # Add items from data
@@ -1638,7 +1546,7 @@ def generate_themed_swot_svg(swot_data, variation, theme):
             if item_y < y + quadrant_height - 20:
                 svg_elements.append(
                     f'<text x="{x+30}" y="{item_y}" font-family="Inter, sans-serif" '
-                    f'font-size="12" fill="#374151">• {str(item)[:30]}</text>'
+                    f'font-size="12" fill="#374151">• {safe_svg_text(str(item), 30)}</text>'
                 )
 
     # Ensure SVG has proper structure and add debugging
@@ -1662,22 +1570,17 @@ def generate_themed_timeline_svg(events, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
-        <linearGradient id="timelineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
-        </linearGradient>
-        ''',
+        f'<linearGradient id="timelineGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{escape_xml_text(theme["primary"])};stop-opacity:1"/><stop offset="100%" style="stop-color:{escape_xml_text(theme["secondary"])};stop-opacity:1"/></linearGradient>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#F8FAFC"/>',
         
         # Title
         f'<text x="{width//2}" y="40" font-family="Inter, sans-serif" '
-        f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">{variation["name"]}</text>',
+        f'font-size="28" font-weight="800" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">{escape_xml_text(variation["name"])}</text>',
         
         # Timeline line
-        f'<line x1="100" y1="{timeline_y}" x2="{width-100}" y2="{timeline_y}" stroke="{theme["accent"]}" stroke-width="4"/>',
+        f'<line x1="100" y1="{timeline_y}" x2="{width-100}" y2="{timeline_y}" stroke="{escape_xml_text(theme["accent"])}" stroke-width="4"/>',
     ]
 
     # Draw events
@@ -1701,26 +1604,26 @@ def generate_themed_timeline_svg(events, variation, theme):
             detail_y = y - 60
             svg_elements.extend([
                 f'<rect x="{x-80}" y="{detail_y-40}" width="160" height="80" '
-                f'rx="8" fill="#FFFFFF" stroke="{theme["primary"]}" stroke-width="2"/>',
+                f'rx="8" fill="#FFFFFF" stroke="{escape_xml_text(theme["primary"])}" stroke-width="2"/>',
                 
                 f'<text x="{x}" y="{detail_y-20}" font-family="Inter, sans-serif" '
-                f'font-size="12" font-weight="700" fill="{theme["primary"]}" text-anchor="middle">{event_name[:20]}</text>',
+                f'font-size="12" font-weight="700" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">{safe_svg_text(event_name, 20)}</text>',
                 
                 f'<text x="{x}" y="{detail_y}" font-family="Inter, sans-serif" '
-                f'font-size="10" fill="#6B7280" text-anchor="middle">{str(event_data)[:25]}</text>',
+                f'font-size="10" fill="#6B7280" text-anchor="middle">{safe_svg_text(str(event_data), 25)}</text>',
             ])
         else:
             # Below timeline
             detail_y = y + 60
             svg_elements.extend([
                 f'<rect x="{x-80}" y="{detail_y}" width="160" height="80" '
-                f'rx="8" fill="#FFFFFF" stroke="{theme["primary"]}" stroke-width="2"/>',
+                f'rx="8" fill="#FFFFFF" stroke="{escape_xml_text(theme["primary"])}" stroke-width="2"/>',
                 
                 f'<text x="{x}" y="{detail_y+20}" font-family="Inter, sans-serif" '
-                f'font-size="12" font-weight="700" fill="{theme["primary"]}" text-anchor="middle">{event_name[:20]}</text>',
+                f'font-size="12" font-weight="700" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">{safe_svg_text(event_name, 20)}</text>',
                 
                 f'<text x="{x}" y="{detail_y+40}" font-family="Inter, sans-serif" '
-                f'font-size="10" fill="#6B7280" text-anchor="middle">{str(event_data)[:25]}</text>',
+                f'font-size="10" fill="#6B7280" text-anchor="middle">{safe_svg_text(str(event_data), 25)}</text>',
             ])
 
     # Ensure SVG has proper structure and add debugging
@@ -1752,24 +1655,15 @@ def generate_themed_sequence_svg(actors, interactions, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
-        <linearGradient id="actorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
-        </linearGradient>
-        ''',
-        f'''
-        <marker id="seqArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="{theme['accent']}"/>
-        </marker>
-        ''',
+        f'<linearGradient id="actorGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{escape_xml_text(theme["primary"])};stop-opacity:1"/><stop offset="100%" style="stop-color:{escape_xml_text(theme["secondary"])};stop-opacity:1"/></linearGradient>',
+        f'<marker id="seqArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="{escape_xml_text(theme["accent"])}"/></marker>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#F8FAFC"/>',
         
         # Title
         f'<text x="{width//2}" y="40" font-family="Inter, sans-serif" '
-        f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">{variation["name"]}</text>',
+        f'font-size="28" font-weight="800" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">{escape_xml_text(variation["name"])}</text>',
     ]
 
     # Draw actors
@@ -1784,10 +1678,10 @@ def generate_themed_sequence_svg(actors, interactions, variation, theme):
             'rx="8" fill="url(#actorGrad)" stroke="#FFFFFF" stroke-width="2"/>',
             
             f'<text x="{x}" y="{y+25}" font-family="Inter, sans-serif" '
-            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{actor_name[:12]}</text>',
+            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(actor_name, 12)}</text>',
             
             f'<text x="{x}" y="{y+45}" font-family="Inter, sans-serif" '
-            f'font-size="10" fill="#E5E7EB" text-anchor="middle">{actor_desc[:15]}</text>',
+            f'font-size="10" fill="#E5E7EB" text-anchor="middle">{safe_svg_text(actor_desc, 15)}</text>',
             
             # Lifeline
             f'<line x1="{x}" y1="{y+actor_height}" x2="{x}" y2="{height-50}" '
@@ -1805,13 +1699,13 @@ def generate_themed_sequence_svg(actors, interactions, variation, theme):
             x1 = actor_positions[from_actor]
             x2 = actor_positions[to_actor]
             y = 180 + i * message_height
-
+            
             svg_elements.extend([
                 f'<line x1="{x1}" y1="{y}" x2="{x2}" y2="{y}" '
-                f'stroke="{theme["accent"]}" stroke-width="2" marker-end="url(#seqArrow)"/>',
-
+                f'stroke="{escape_xml_text(theme["accent"])}" stroke-width="2" marker-end="url(#seqArrow)"/>',
+                
                 f'<text x="{(x1+x2)/2}" y="{y-10}" font-family="Inter, sans-serif" '
-                f'font-size="12" fill="#374151" text-anchor="middle">{message[:30]}</text>'
+                f'font-size="12" fill="#374151" text-anchor="middle">{safe_svg_text(message, 30)}</text>'
             ])
 
     # Ensure SVG has proper structure and add debugging
@@ -1842,24 +1736,15 @@ def generate_themed_state_svg(states, transitions, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
-        <linearGradient id="stateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
-        </linearGradient>
-        ''',
-        f'''
-        <marker id="stateArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="{theme['accent']}"/>
-        </marker>
-        ''',
+        f'<linearGradient id="stateGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{escape_xml_text(theme["primary"])};stop-opacity:1"/><stop offset="100%" style="stop-color:{escape_xml_text(theme["secondary"])};stop-opacity:1"/></linearGradient>',
+        f'<marker id="stateArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="{escape_xml_text(theme["accent"])}"/></marker>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#F8FAFC"/>',
         
         # Title
         f'<text x="{width//2}" y="40" font-family="Inter, sans-serif" '
-        f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">{variation["name"]}</text>',
+        f'font-size="28" font-weight="800" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">{escape_xml_text(variation["name"])}</text>',
     ]
 
     # Draw states
@@ -1874,10 +1759,10 @@ def generate_themed_state_svg(states, transitions, variation, theme):
             f'<circle cx="{x}" cy="{y}" r="{state_radius}" fill="url(#stateGrad)" stroke="#FFFFFF" stroke-width="3"/>',
             
             f'<text x="{x}" y="{y-10}" font-family="Inter, sans-serif" '
-            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{state_name[:12]}</text>',
+            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(state_name, 12)}</text>',
             
             f'<text x="{x}" y="{y+10}" font-family="Inter, sans-serif" '
-            f'font-size="10" fill="#E5E7EB" text-anchor="middle">{state_desc[:20]}</text>',
+            f'font-size="10" fill="#E5E7EB" text-anchor="middle">{safe_svg_text(state_desc, 20)}</text>',
         ])
 
     # Draw transitions
@@ -1900,10 +1785,10 @@ def generate_themed_state_svg(states, transitions, variation, theme):
                 
                 svg_elements.extend([
                     f'<line x1="{start_x}" y1="{start_y}" x2="{end_x}" y2="{end_y}" '
-                    f'stroke="{theme["accent"]}" stroke-width="2" marker-end="url(#stateArrow)"/>',
-
+                    f'stroke="{escape_xml_text(theme["accent"])}" stroke-width="2" marker-end="url(#stateArrow)"/>',
+                    
                     f'<text x="{(start_x+end_x)/2}" y="{(start_y+end_y)/2-10}" font-family="Inter, sans-serif" '
-                    f'font-size="10" fill="#374151" text-anchor="middle">{trigger[:15]}</text>'
+                    f'font-size="10" fill="#374151" text-anchor="middle">{safe_svg_text(trigger, 15)}</text>'
                 ])
 
     # Ensure SVG has proper structure and add debugging
@@ -1935,27 +1820,10 @@ def generate_themed_class_svg(classes, variation, theme):
     svg_elements = [
         '<defs>',
         # Class box gradient
-        '''
-        <linearGradient id="classGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
-        </linearGradient>
-        ''',
+        f'<linearGradient id="classGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{escape_xml_text(theme["primary"])};stop-opacity:1"/><stop offset="100%" style="stop-color:{escape_xml_text(theme["secondary"])};stop-opacity:1"/></linearGradient>',
         # Inheritance arrow
-        '''
-        <marker id="inheritanceArrow" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
-            <polygon points="0,0 12,6 0,12 6,6" fill="#1F2937" opacity="0.8"/>
-        </marker>
-        ''',
-        '''
-        <filter id="premiumShadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
-            <feOffset dx="2" dy="4" result="offset"/>
-            <feFlood flood-color="#000000" flood-opacity="0.2"/>
-            <feComposite in2="offset" operator="in"/>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        ''',
+        '<marker id="inheritanceArrow" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto"><polygon points="0,0 12,6 0,12 6,6" fill="#1F2937" opacity="0.8"/></marker>',
+        '<filter id="premiumShadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dx="2" dy="4" result="offset"/><feFlood flood-color="#000000" flood-opacity="0.2"/><feComposite in2="offset" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
         '</defs>',
         
         # Background
@@ -1963,7 +1831,7 @@ def generate_themed_class_svg(classes, variation, theme):
         
         # Title
         f'<text x="{width//2}" y="40" font-family="Inter, -apple-system, sans-serif" '
-        f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">{variation["name"]}</text>',
+        f'font-size="28" font-weight="800" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">{escape_xml_text(variation["name"])}</text>',
         f'<text x="{width//2}" y="70" font-family="Inter, -apple-system, sans-serif" '
         f'font-size="16" fill="#6B7280" text-anchor="middle">Object-oriented design visualization</text>',
     ]
@@ -1978,7 +1846,7 @@ def generate_themed_class_svg(classes, variation, theme):
         row = i // cols
         x = (col + 1) * col_width
         y = 100 + row * row_height
-        class_positions[class_name] = (x, y)
+        class_positions[safe_svg_text(class_name)] = (x, y)
         
         # Calculate class box height based on content
         attr_count = len(members.get("attributes", []))
@@ -1996,7 +1864,7 @@ def generate_themed_class_svg(classes, variation, theme):
             
             # Class name
             f'<text x="{x}" y="{y+28}" font-family="Inter, -apple-system, sans-serif" '
-            f'font-size="16" font-weight="700" fill="#1F2937" text-anchor="middle">{class_name}</text>',
+            f'font-size="16" font-weight="700" fill="#1F2937" text-anchor="middle">{safe_svg_text(class_name)}</text>',
             
             # Separator line
             f'<line x1="{x-class_width//2}" y1="{y+40}" x2="{x+class_width//2}" y2="{y+40}" '
@@ -2012,7 +1880,7 @@ def generate_themed_class_svg(classes, variation, theme):
         for j, attr in enumerate(members.get("attributes", [])[:5]):  # Limit to 5 attributes
             svg_elements.append(
                 f'<text x="{x-class_width//2+15}" y="{y+80+j*16}" font-family="Inter, -apple-system, sans-serif" '
-                f'font-size="12" fill="#FFFFFF">{attr[:20]}</text>'
+                f'font-size="12" fill="#FFFFFF">{safe_svg_text(attr, 20)}</text>'
             )
         
         # Methods section
@@ -2024,7 +1892,7 @@ def generate_themed_class_svg(classes, variation, theme):
         for k, method in enumerate(members.get("methods", [])[:5]):  # Limit to 5 methods
             svg_elements.append(
                 f'<text x="{x-class_width//2+15}" y="{y+100+len(members.get("attributes", []))*16+k*16}" '
-                f'font-family="Inter, -apple-system, sans-serif" font-size="12" fill="#FFFFFF">{method[:20]}()</text>'
+                f'font-family="Inter, -apple-system, sans-serif" font-size="12" fill="#FFFFFF">{safe_svg_text(method, 20)}()</text>'
             )
     
     # Add inheritance relationships (simplified example)
@@ -2064,33 +1932,11 @@ def generate_themed_erd_svg(entities, variation, theme):
     svg_elements = [
         '<defs>',
         # Premium gradients for different entity types
-        '''
-        <linearGradient id="entityGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
-        </linearGradient>
-        ''',
-        '''
-        <linearGradient id="relationshipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme['secondary']};stop-opacity:0.9" />
-            <stop offset="100%" style="stop-color:{theme['accent']};stop-opacity:1" />
-        </linearGradient>
-        ''',
+        f'<linearGradient id="entityGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{escape_xml_text(theme["primary"])};stop-opacity:1"/><stop offset="100%" style="stop-color:{escape_xml_text(theme["secondary"])};stop-opacity:1"/></linearGradient>',
+        f'<linearGradient id="relationshipGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{escape_xml_text(theme["secondary"])};stop-opacity:0.9"/><stop offset="100%" style="stop-color:{escape_xml_text(theme["accent"])};stop-opacity:1"/></linearGradient>',
         # Arrow marker for relationships
-        '''
-        <marker id="erdArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="{theme['accent']}"/>
-        </marker>
-        ''',
-        '''
-        <filter id="premiumShadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
-            <feOffset dx="2" dy="4" result="offset"/>
-            <feFlood flood-color="#000000" flood-opacity="0.2"/>
-            <feComposite in2="offset" operator="in"/>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        ''',
+        f'<marker id="erdArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="{escape_xml_text(theme["accent"])}"/></marker>',
+        '<filter id="premiumShadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dx="2" dy="4" result="offset"/><feFlood flood-color="#000000" flood-opacity="0.2"/><feComposite in2="offset" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
         '</defs>',
         
         # Background
@@ -2098,7 +1944,7 @@ def generate_themed_erd_svg(entities, variation, theme):
         
         # Title
         f'<text x="{width//2}" y="40" font-family="Inter, -apple-system, sans-serif" '
-        f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">{variation["name"]}</text>',
+        f'font-size="28" font-weight="800" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">{escape_xml_text(variation["name"])}</text>',
         f'<text x="{width//2}" y="70" font-family="Inter, -apple-system, sans-serif" '
         f'font-size="16" fill="#6B7280" text-anchor="middle">Database schema visualization</text>',
     ]
@@ -2113,7 +1959,7 @@ def generate_themed_erd_svg(entities, variation, theme):
         angle = math.radians(i * angle_step)
         x = center_x + radius * math.cos(angle)
         y = center_y + radius * math.sin(angle)
-        entity_positions[entity_name] = (x, y)
+        entity_positions[safe_svg_text(entity_name)] = (x, y)
         
         # Entity box
         svg_elements.extend([
@@ -2122,7 +1968,7 @@ def generate_themed_erd_svg(entities, variation, theme):
             
             # Entity name
             f'<text x="{x}" y="{y-node_height//2+30}" font-family="Inter, -apple-system, sans-serif" '
-            f'font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">{entity_name}</text>',
+            f'font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(entity_name)}</text>',
             
             # Attributes
             f'<rect x="{x-node_width//2+10}" y="{y-node_height//2+40}" width="{node_width-20}" height="{node_height-50}" '
@@ -2133,7 +1979,7 @@ def generate_themed_erd_svg(entities, variation, theme):
         for j, attr in enumerate(attributes[:3]):
             svg_elements.append(
                 f'<text x="{x}" y="{y-node_height//2+60+j*20}" font-family="Inter, -apple-system, sans-serif" '
-                f'font-size="12" fill="#FFFFFF" text-anchor="middle">{attr[:20]}</text>'
+                f'font-size="12" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(attr, 20)}</text>'
             )
         
         if len(attributes) > 3:
@@ -2174,32 +2020,15 @@ def generate_themed_network_svg(nodes, connections, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
-        <linearGradient id="networkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
-        </linearGradient>
-        ''',
-        f'''
-        <filter id="networkShadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
-            <feOffset dx="2" dy="4" result="offset"/>
-            <feFlood flood-color="#000000" flood-opacity="0.2"/>
-            <feComposite in2="offset" operator="in"/>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        ''',
-        f'''
-        <marker id="networkArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="{theme['accent']}"/>
-        </marker>
-        ''',
+        f'<linearGradient id="networkGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{escape_xml_text(theme["primary"])};stop-opacity:1"/><stop offset="100%" style="stop-color:{escape_xml_text(theme["secondary"])};stop-opacity:1"/></linearGradient>',
+        f'<filter id="networkShadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dx="2" dy="4" result="offset"/><feFlood flood-color="#000000" flood-opacity="0.2"/><feComposite in2="offset" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
+        f'<marker id="networkArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="{escape_xml_text(theme["accent"])}"/></marker>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#F8FAFC"/>',
         
         f'<text x="{width//2}" y="40" font-family="Inter, sans-serif" '
-        f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">Network Architecture</text>',
+        f'font-size="28" font-weight="800" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">Network Architecture</text>',
         f'<text x="{width//2}" y="70" font-family="Inter, sans-serif" '
         f'font-size="16" fill="#6B7280" text-anchor="middle">System connectivity and data flow</text>',
     ]
@@ -2224,10 +2053,10 @@ def generate_themed_network_svg(nodes, connections, variation, theme):
             f'rx="12" fill="url(#networkGrad)" filter="url(#networkShadow)" stroke="#FFFFFF" stroke-width="2"/>',
             
             f'<text x="{x}" y="{y-10}" font-family="Inter, sans-serif" '
-            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{node_name[:12]}</text>',
+            f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(node_name, 12)}</text>',
             
             f'<text x="{x}" y="{y+8}" font-family="Inter, sans-serif" '
-            f'font-size="11" fill="#E5E7EB" text-anchor="middle">{node_type[:15]}</text>',
+            f'font-size="11" fill="#E5E7EB" text-anchor="middle">{safe_svg_text(node_type, 15)}</text>',
         ])
 
     # Draw connections
@@ -2242,10 +2071,10 @@ def generate_themed_network_svg(nodes, connections, variation, theme):
             
             svg_elements.extend([
                 f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" '
-                f'stroke="{theme["accent"]}" stroke-width="3" marker-end="url(#networkArrow)"/>',
+                f'stroke="{escape_xml_text(theme["accent"])}" stroke-width="3" marker-end="url(#networkArrow)"/>',
                 
                 f'<text x="{(x1+x2)/2}" y="{(y1+y2)/2-10}" font-family="Inter, sans-serif" '
-                f'font-size="12" fill="#374151" text-anchor="middle">{label[:20]}</text>'
+                f'font-size="12" fill="#374151" text-anchor="middle">{safe_svg_text(label, 20)}</text>'
             ])
 
     # Ensure SVG has proper structure and add debugging
@@ -2268,27 +2097,14 @@ def generate_themed_architecture_svg(components, variation, theme):
     
     svg_elements = [
         '<defs>',
-        f'''
-        <linearGradient id="archGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
-        </linearGradient>
-        ''',
-        f'''
-        <filter id="archShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
-            <feOffset dx="2" dy="4" result="offset"/>
-            <feFlood flood-color="#000000" flood-opacity="0.15"/>
-            <feComposite in2="offset" operator="in"/>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        ''',
+        f'<linearGradient id="archGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{escape_xml_text(theme["primary"])};stop-opacity:1"/><stop offset="100%" style="stop-color:{escape_xml_text(theme["secondary"])};stop-opacity:1"/></linearGradient>',
+        f'<filter id="archShadow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="3"/><feOffset dx="2" dy="4" result="offset"/><feFlood flood-color="#000000" flood-opacity="0.15"/><feComposite in2="offset" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
         '</defs>',
         
         f'<rect width="{width}" height="{height}" fill="#FAFAFA"/>',
         
         f'<text x="{width//2}" y="40" font-family="Inter, sans-serif" '
-        f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">System Architecture</text>',
+        f'font-size="28" font-weight="800" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">System Architecture</text>',
         f'<text x="{width//2}" y="70" font-family="Inter, sans-serif" '
         f'font-size="16" fill="#6B7280" text-anchor="middle">Component structure and relationships</text>',
     ]
@@ -2314,7 +2130,7 @@ def generate_themed_architecture_svg(components, variation, theme):
         
         svg_elements.append(
             f'<text x="70" y="{layer_y}" font-family="Inter, sans-serif" '
-            f'font-size="14" font-weight="600" fill="#7C3AED">{layer_name} Layer</text>'
+            f'font-size="14" font-weight="600" fill="#7C3AED">{safe_svg_text(layer_name)} Layer</text>'
         )
         
         # Place components in this layer
@@ -2336,10 +2152,10 @@ def generate_themed_architecture_svg(components, variation, theme):
                     f'rx="12" fill="url(#archGrad)" filter="url(#archShadow)" stroke="#FFFFFF" stroke-width="2"/>',
                     
                     f'<text x="{x + component_width//2}" y="{y + 25}" font-family="Inter, sans-serif" '
-                    f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{comp_name[:18]}</text>',
+                    f'font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">{safe_svg_text(comp_name, 18)}</text>',
                     
                     f'<text x="{x + component_width//2}" y="{y + 45}" font-family="Inter, sans-serif" '
-                    f'font-size="11" fill="#E5E7EB" text-anchor="middle">{comp_purpose[:25]}</text>',
+                    f'font-size="11" fill="#E5E7EB" text-anchor="middle">{safe_svg_text(comp_purpose, 25)}</text>',
                 ])
 
     # Draw relationships
@@ -2384,8 +2200,8 @@ def generate_themed_gantt_svg(tasks, variation, theme):
         '<defs>',
         '''
         <linearGradient id="ganttGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
+            <stop offset="0%" style="stop-color:{escape_xml_text(theme['primary'])};stop-opacity:1" />
+            <stop offset="100%" style="stop-color:{escape_xml_text(theme['secondary'])};stop-opacity:1" />
         </linearGradient>
         ''',
         '</defs>',
@@ -2394,7 +2210,7 @@ def generate_themed_gantt_svg(tasks, variation, theme):
         
         # Title
         f'<text x="{width//2}" y="40" font-family="Inter, sans-serif" '
-        f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">{variation["name"]}</text>',
+        f'font-size="28" font-weight="800" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">{escape_xml_text(variation["name"])}</text>',
         
         # Time axis
         f'<line x1="{chart_start_x}" y1="80" x2="{width-50}" y2="80" stroke="#9CA3AF" stroke-width="2"/>',
@@ -2422,7 +2238,7 @@ def generate_themed_gantt_svg(tasks, variation, theme):
         # Task label
         svg_elements.append(
             f'<text x="20" y="{y+task_height//2+5}" font-family="Inter, sans-serif" '
-            f'font-size="12" fill="#374151" font-weight="600">{task_name[:25]}</text>'
+            f'font-size="12" fill="#374151" font-weight="600">{safe_svg_text(task_name, 25)}</text>'
         )
         
         # Task bar
@@ -2464,8 +2280,8 @@ def generate_themed_journey_svg(stages, variation, theme):
         '<defs>',
         '''
         <linearGradient id="journeyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
+            <stop offset="0%" style="stop-color:{escape_xml_text(theme['primary'])};stop-opacity:1" />
+            <stop offset="100%" style="stop-color:{escape_xml_text(theme['secondary'])};stop-opacity:1" />
         </linearGradient>
         ''',
         '</defs>',
@@ -2474,7 +2290,7 @@ def generate_themed_journey_svg(stages, variation, theme):
         
         # Title
         f'<text x="{width//2}" y="40" font-family="Inter, sans-serif" '
-        f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">{variation["name"]}</text>',
+        f'font-size="28" font-weight="800" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">{escape_xml_text(variation["name"])}</text>',
         
         # Journey line
         f'<line x1="100" y1="{height//2}" x2="{width-100}" y2="{height//2}" stroke="#DB2777" stroke-width="4"/>',
@@ -2505,13 +2321,13 @@ def generate_themed_journey_svg(stages, variation, theme):
             'rx="8" fill="#FFFFFF" stroke="#DB2777" stroke-width="2"/>',
             
             f'<text x="{x}" y="{y-120}" font-family="Inter, sans-serif" '
-            f'font-size="12" font-weight="700" fill="#DB2777" text-anchor="middle">{touchpoint_name[:15]}</text>',
+            f'font-size="12" font-weight="700" fill="#DB2777" text-anchor="middle">{safe_svg_text(touchpoint_name, 15)}</text>',
             
             f'<text x="{x}" y="{y-100}" font-family="Inter, sans-serif" '
-            f'font-size="10" fill="#374151" text-anchor="middle">{action[:20]}</text>',
+            f'font-size="10" fill="#374151" text-anchor="middle">{safe_svg_text(action, 20)}</text>',
             
             f'<text x="{x}" y="{y-80}" font-family="Inter, sans-serif" '
-            f'font-size="10" fill="#6B7280" text-anchor="middle">{emotion}</text>',
+            f'font-size="10" fill="#6B7280" text-anchor="middle">{safe_svg_text(emotion)}</text>',
         ])
 
     # Ensure SVG has proper structure and add debugging
@@ -2538,26 +2354,9 @@ def generate_themed_flowchart_svg(steps, variation, theme):
 
     svg_elements = [
         '<defs>',
-        f'''
-        <linearGradient id="flowchartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
-            <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
-        </linearGradient>
-        ''',
-        '''
-        <filter id="flowchartShadow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="6"/>
-            <feOffset dx="3" dy="8" result="offset"/>
-            <feFlood flood-color="#000000" flood-opacity="0.25"/>
-            <feComposite in2="offset" operator="in"/>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-        ''',
-        '''
-        <marker id="flowchartArrow" markerWidth="16" markerHeight="12" refX="15" refY="6" orient="auto">
-            <polygon points="0 0, 16 6, 0 12" fill="#4a5568" opacity="0.8"/>
-        </marker>
-        ''',
+        f'<linearGradient id="flowchartGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:{escape_xml_text(theme["primary"])};stop-opacity:1"/><stop offset="100%" style="stop-color:{escape_xml_text(theme["secondary"])};stop-opacity:1"/></linearGradient>',
+        f'<filter id="flowchartShadow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur in="SourceAlpha" stdDeviation="6"/><feOffset dx="3" dy="8" result="offset"/><feFlood flood-color="#000000" flood-opacity="0.25"/><feComposite in2="offset" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>',
+        f'<marker id="flowchartArrow" markerWidth="16" markerHeight="12" refX="15" refY="6" orient="auto"><polygon points="0 0, 16 6, 0 12" fill="{escape_xml_text(theme["accent"])}"/></marker>',
         '</defs>',
 
         # Background
@@ -2565,7 +2364,7 @@ def generate_themed_flowchart_svg(steps, variation, theme):
         
         # Title
         f'<text x="{width//2}" y="40" font-family="Inter, sans-serif" '
-        f'font-size="28" font-weight="800" fill="{theme["primary"]}" text-anchor="middle">{variation["name"]}</text>',
+        f'font-size="28" font-weight="800" fill="{escape_xml_text(theme["primary"])}" text-anchor="middle">{escape_xml_text(variation["name"])}</text>',
         f'<text x="{width//2}" y="65" font-family="Inter, sans-serif" '
         f'font-size="16" fill="#718096" text-anchor="middle">Step-by-step workflow visualization</text>',
     ]
@@ -2579,11 +2378,11 @@ def generate_themed_flowchart_svg(steps, variation, theme):
             # Main node
             f'<rect x="{x-node_width//2}" y="{y}" width="{node_width}" height="{node_height}" '
             f'rx="18" ry="18" fill="url(#flowchartGrad)" filter="url(#flowchartShadow)" '
-            'stroke="rgba(255,255,255,0.4)" stroke-width="2"/>',
+            f'stroke="rgba(255,255,255,0.4)" stroke-width="2"/>',
 
             # Inner highlight
             f'<rect x="{x-node_width//2+4}" y="{y+4}" width="{node_width-8}" height="3" '
-            'rx="2" fill="rgba(255,255,255,0.5)"/>',
+            f'rx="2" fill="rgba(255,255,255,0.5)"/>',
 
             # Step number badge
             f'<circle cx="{x-node_width//2+25}" cy="{y+25}" r="15" fill="rgba(255,255,255,0.3)"/>',
@@ -2604,7 +2403,7 @@ def generate_themed_flowchart_svg(steps, variation, theme):
             svg_elements.append(
                 f'<text x="{x}" y="{y+35+j*20}" font-family="Inter, sans-serif" '
                 f'font-size="18" font-weight="700" fill="white" text-anchor="middle" '
-                f'letter-spacing="0.5px">{line}</text>'
+                f'letter-spacing="0.5px">{safe_svg_text(line)}</text>'
             )
 
         # Description
@@ -2612,7 +2411,7 @@ def generate_themed_flowchart_svg(steps, variation, theme):
         for j, line in enumerate(desc_lines):
             svg_elements.append(
                 f'<text x="{x}" y="{desc_start_y+j*16}" font-family="Inter, sans-serif" '
-                f'font-size="13" fill="rgba(255,255,255,0.9)" text-anchor="middle">{line}</text>'
+                f'font-size="13" fill="rgba(255,255,255,0.9)" text-anchor="middle">{safe_svg_text(line)}</text>'
             )
 
         # Connection arrow to next step
@@ -2623,7 +2422,7 @@ def generate_themed_flowchart_svg(steps, variation, theme):
             svg_elements.extend([
                 # Connection with theme color
                 f'<path d="M{x} {y+node_height} Q{x+30} {mid_y} {x} {next_y-25}" '
-                f'stroke="{theme["accent"]}" stroke-width="4" fill="none" opacity="0.8" '
+                f'stroke="{escape_xml_text(theme["accent"])}" stroke-width="4" fill="none" opacity="0.8" '
                 f'marker-end="url(#flowchartArrow)"/>',
             ])
 
@@ -2648,7 +2447,7 @@ def generate_napkin_diagram():
         template_name = napkin_template.get('name', '').strip()
         napkin_type = napkin_template.get('napkinType', 'flowchart')
 
-        logger.info(f"Processing diagram request - Type: {napkin_type}, Input: {user_input[:50]}...")
+        logger.info(f"Processing diagram request - Type: {safe_svg_text(napkin_type)}, Input: {safe_svg_text(user_input, 50)}...")
 
         # ENHANCED: Use diagram-specific prompts
         enhanced_prompt = get_enhanced_diagram_prompt(napkin_type, user_input)
@@ -2662,7 +2461,7 @@ def generate_napkin_diagram():
                     messages=[
                         {
                             "role": "system", 
-                            "content": f"You are a {napkin_type} expert. Return only valid JSON that matches the specified format exactly. Do not include any explanatory text, just the JSON. Focus on {napkin_type}-specific terminology and best practices."
+                            "content": f"You are a {safe_svg_text(napkin_type)} expert. Return only valid JSON that matches the specified format exactly. Do not include any explanatory text, just the JSON. Focus on {safe_svg_text(napkin_type)}-specific terminology and best practices."
                         },
                         {
                             "role": "user", 
@@ -2676,10 +2475,10 @@ def generate_napkin_diagram():
                 
                 diagram_data = json.loads(response.choices[0].message.content)
                 validate_diagram_json(diagram_data, napkin_type)
-                logger.info(f"Generated AI data for {napkin_type}")
+                logger.info(f"Generated AI data for {safe_svg_text(napkin_type)}")
                 
             except Exception as e:
-                logger.error(f"Groq API error for {napkin_type}: {e}")
+                logger.error(f"Groq API error for {napkin_type}: {str(e)}")
                 diagram_data = get_fallback_data(napkin_type, user_input)
         else:
             diagram_data = get_fallback_data(napkin_type, user_input)
@@ -2726,7 +2525,7 @@ def generate_napkin_diagram():
             # Default to flowchart for unknown types
             svg_content = generate_enhanced_flowchart_svg(diagram_data.get("steps", {}))
 
-        logger.info(f"Generated {napkin_type} diagram successfully")
+        logger.info(f"Generated {safe_svg_text(napkin_type)} diagram successfully")
 
         return jsonify({
             "templateName": template_name,
@@ -2738,7 +2537,7 @@ def generate_napkin_diagram():
 
     except Exception as e:
         logger.error(f"Error generating diagram: {str(e)}")
-        error_content = generate_error_svg(f"Failed to generate {napkin_type} diagram")
+        error_content = generate_error_svg(f"Failed to generate {safe_svg_text(napkin_type)} diagram")
         return jsonify({
             "templateName": napkin_template.get('name', 'Error'),
             "content": error_content,
@@ -2770,7 +2569,7 @@ def regenerate_diagram():
         if not prompt:
             return jsonify({"error": "Prompt is required"}), 400
         
-        logger.info(f"Regenerating {diagram_type} diagram with modified prompt")
+        logger.info(f"Regenerating {safe_svg_text(diagram_type)} diagram with modified prompt")
         
         # Use the same AI generation process as the original diagram
         diagram_data = {}
@@ -2779,7 +2578,7 @@ def regenerate_diagram():
             # Apply text changes directly to the current SVG instead of generating new data
             svg_content = apply_text_changes_to_svg(current_svg, prompt)
             if svg_content:
-                logger.info(f"Successfully applied text changes to {diagram_type} diagram")
+                logger.info(f"Successfully applied text changes to {safe_svg_text(diagram_type)} diagram")
                 return jsonify({
                     "svg": svg_content,
                     "success": True,
@@ -2816,12 +2615,12 @@ def regenerate_diagram():
                 try:
                     diagram_data = json.loads(response_content)
                 except json.JSONDecodeError as e:
-                    logger.error(f"JSON decode error: {e}")
-                    logger.error(f"Raw response: {response_content}")
+                    logger.error(f"JSON decode error: {str(e)}")
+                    logger.error(f"Raw response: {safe_svg_text(response_content)}")
                     # Use fallback data if AI response is invalid
                     diagram_data = get_fallback_data(diagram_type, prompt)
             except Exception as e:
-                logger.error(f"AI API error: {e}")
+                logger.error(f"AI API error: {str(e)}")
                 # Use fallback data if AI call fails
                 diagram_data = get_fallback_data(diagram_type, prompt)
         
@@ -2867,7 +2666,7 @@ def regenerate_diagram():
             svg_content = generate_enhanced_flowchart_svg(diagram_data.get("steps", {}))
 
         using_ai = client is not None
-        logger.info(f"Successfully regenerated {diagram_type} diagram {'with AI' if using_ai else 'with fallback data'}")
+        logger.info(f"Successfully regenerated {safe_svg_text(diagram_type)} diagram {'with AI' if using_ai else 'with fallback data'}")
 
         return jsonify({
             "svg": svg_content,
@@ -2931,7 +2730,7 @@ def generate_document():
                 messages=[
                     {
                         "role": "system",
-                        "content": f"You are a professional document writer specializing in {document_type} documents. Create comprehensive, well-structured, and professional content."
+                        "content": f"You are a professional document writer specializing in {safe_svg_text(document_type)} documents. Create comprehensive, well-structured, and professional content."
                     },
                     {
                         "role": "user",
@@ -2948,14 +2747,14 @@ def generate_document():
             generated_content = completion.choices[0].message.content
             
         except Exception as e:
-            logger.warning(f"Groq API failed, using fallback content: {e}")
-            generated_content = f"""# {template_name}
+            logger.warning(f"Groq API failed, using fallback content: {str(e)}")
+            generated_content = f"""# {safe_svg_text(template_name)}
 
 ## Overview
-This document provides a comprehensive overview of {user_input}.
+This document provides a comprehensive overview of {safe_svg_text(user_input)}.
 
 ## Key Points
-- Professional approach to {user_input}
+- Professional approach to {safe_svg_text(user_input)}
 - Structured methodology and best practices
 - Clear objectives and deliverables
 - Risk assessment and mitigation strategies
@@ -2968,7 +2767,7 @@ This document provides a comprehensive overview of {user_input}.
 5. **Review Phase**: Validate results and optimize
 
 ## Conclusion
-This document serves as a foundation for successful implementation of {user_input}.
+This document serves as a foundation for successful implementation of {safe_svg_text(user_input)}.
 
 *Generated on {datetime.now().strftime('%B %d, %Y')}*
 *Status: Ready for implementation*"""
@@ -2983,7 +2782,7 @@ This document serves as a foundation for successful implementation of {user_inpu
         return jsonify(response_data)
         
     except Exception as e:
-        logger.error(f"Error in generate_document: {e}")
+        logger.error(f"Error in generate_document: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/generate_documents', methods=['POST'])
@@ -3012,7 +2811,7 @@ def generate_documents():
                         messages=[
                             {
                                 "role": "system",
-                                "content": f"You are a professional document writer specializing in {document_type} documents. Create comprehensive, well-structured, and professional content."
+                                "content": f"You are a professional document writer specializing in {safe_svg_text(document_type)} documents. Create comprehensive, well-structured, and professional content."
                             },
                             {
                                 "role": "user",
@@ -3029,19 +2828,19 @@ def generate_documents():
                     generated_content = completion.choices[0].message.content
                     
                 except Exception as e:
-                    logger.warning(f"Groq API failed for template {template_name}, using fallback: {e}")
-                    generated_content = f"""# {template_name}
+                    logger.warning(f"Groq API failed for template {safe_svg_text(template_name)}, using fallback: {str(e)}")
+                    generated_content = f"""# {safe_svg_text(template_name)}
 
 ## Overview
-This document provides a comprehensive overview of {user_input}.
+This document provides a comprehensive overview of {safe_svg_text(user_input)}.
 
 ## Key Points
-- Professional approach to {user_input}
+- Professional approach to {safe_svg_text(user_input)}
 - Structured methodology and best practices
 - Clear objectives and deliverables
 
 ## Implementation
-Detailed implementation plan for {user_input}.
+Detailed implementation plan for {safe_svg_text(user_input)}.
 
 *Generated on {datetime.now().strftime('%B %d, %Y')}*"""
                 
@@ -3055,13 +2854,13 @@ Detailed implementation plan for {user_input}.
                 generated_documents.append(document_data)
                 
             except Exception as e:
-                logger.error(f"Error generating document for template {template.get('name', 'Unknown')}: {e}")
+                logger.error(f"Error generating document for template {template.get('name', 'Unknown')}: {str(e)}")
                 continue
         
         return jsonify(generated_documents)
         
     except Exception as e:
-        logger.error(f"Error in generate_documents: {e}")
+        logger.error(f"Error in generate_documents: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/document_templates', methods=['GET'])
@@ -3107,7 +2906,7 @@ def get_document_templates():
         return jsonify(templates)
         
     except Exception as e:
-        logger.error(f"Error in get_document_templates: {e}")
+        logger.error(f"Error in get_document_templates: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 def get_local_ip():
@@ -3135,12 +2934,12 @@ def customize_fallback_for_variation(diagram_data, diagram_type, style, user_inp
                 for key, value in steps.items():
                     detailed_steps[key] = value
                     if 'Start' in key or 'Initialize' in key:
-                        detailed_steps[f'{key} - Pre-checks'] = [f'Validate prerequisites for {user_input}']
+                        detailed_steps[f'{safe_svg_text(key)} - Pre-checks'] = [f'Validate prerequisites for {safe_svg_text(user_input)}']
                     if 'Process' in key or 'Implement' in key:
-                        detailed_steps[f'{key} - Validation'] = [f'Quality check for {key.lower()}']
-                        detailed_steps[f'{key} - Documentation'] = [f'Document progress of {key.lower()}']
+                        detailed_steps[f'{safe_svg_text(key)} - Validation'] = [f'Quality check for {key.lower()}']
+                        detailed_steps[f'{safe_svg_text(key)} - Documentation'] = [f'Document progress of {key.lower()}']
                     if 'End' in key or 'Complete' in key:
-                        detailed_steps[f'{key} - Cleanup'] = [f'Finalize and cleanup after {user_input}']
+                        detailed_steps[f'{safe_svg_text(key)} - Cleanup'] = [f'Finalize and cleanup after {safe_svg_text(user_input)}']
                 customized_data['steps'] = detailed_steps
                 
             elif style == 'compact':
@@ -3155,10 +2954,10 @@ def customize_fallback_for_variation(diagram_data, diagram_type, style, user_inp
             elif style == 'enhanced':
                 # Add parallel processes and decision points
                 enhanced_steps = dict(steps)
-                enhanced_steps['Risk Assessment'] = [f'Evaluate potential risks for {user_input}']
-                enhanced_steps['Quality Gate'] = [f'Quality checkpoint for {user_input}']
-                enhanced_steps['Alternative Path'] = [f'Backup approach for {user_input}']
-                enhanced_steps['Success Metrics'] = [f'Define success criteria for {user_input}']
+                enhanced_steps['Risk Assessment'] = [f'Evaluate potential risks for {safe_svg_text(user_input)}']
+                enhanced_steps['Quality Gate'] = [f'Quality checkpoint for {safe_svg_text(user_input)}']
+                enhanced_steps['Alternative Path'] = [f'Backup approach for {safe_svg_text(user_input)}']
+                enhanced_steps['Success Metrics'] = [f'Define success criteria for {safe_svg_text(user_input)}']
                 customized_data['steps'] = enhanced_steps
                 
         elif diagram_type == 'mind map' and 'branches' in customized_data:
@@ -3188,10 +2987,10 @@ def customize_fallback_for_variation(diagram_data, diagram_type, style, user_inp
             elif style == 'enhanced':
                 # Add creative and strategic branches
                 enhanced_branches = dict(branches)
-                enhanced_branches['Innovation Opportunities'] = [f'Creative solutions for {user_input}']
-                enhanced_branches['Future Vision'] = [f'Long-term goals for {user_input}']
-                enhanced_branches['Risk Mitigation'] = [f'Potential challenges in {user_input}']
-                enhanced_branches['Success Factors'] = [f'Key elements for success in {user_input}']
+                enhanced_branches['Innovation Opportunities'] = [f'Creative solutions for {safe_svg_text(user_input)}']
+                enhanced_branches['Future Vision'] = [f'Long-term goals for {safe_svg_text(user_input)}']
+                enhanced_branches['Risk Mitigation'] = [f'Potential challenges in {safe_svg_text(user_input)}']
+                enhanced_branches['Success Factors'] = [f'Key elements for success in {safe_svg_text(user_input)}']
                 customized_data['branches'] = enhanced_branches
                 
         elif diagram_type == 'sequence' and 'actors' in customized_data and 'interactions' in customized_data:
@@ -3206,9 +3005,9 @@ def customize_fallback_for_variation(diagram_data, diagram_type, style, user_inp
                     actors['Logger'] = 'Audit Logger'
                 detailed_interactions = interactions.copy()
                 detailed_interactions.extend([
-                    {'from': 'System', 'to': 'Logger', 'message': f'Log start of {user_input}'},
+                    {'from': 'System', 'to': 'Logger', 'message': f'Log start of {safe_svg_text(user_input)}'},
                     {'from': 'Logger', 'to': 'System', 'message': 'Confirm logging'},
-                    {'from': 'System', 'to': 'Logger', 'message': f'Log completion of {user_input}'}
+                    {'from': 'System', 'to': 'Logger', 'message': f'Log completion of {safe_svg_text(user_input)}'}
                 ])
                 customized_data['interactions'] = detailed_interactions
                 
@@ -3223,7 +3022,7 @@ def customize_fallback_for_variation(diagram_data, diagram_type, style, user_inp
                 enhanced_interactions.extend([
                     {'from': 'System', 'to': 'ErrorHandler', 'message': 'Handle exceptions'},
                     {'from': 'ErrorHandler', 'to': 'System', 'message': 'Return error response'},
-                    {'from': 'System', 'to': 'Monitor', 'message': f'Track performance of {user_input}'}
+                    {'from': 'System', 'to': 'Monitor', 'message': f'Track performance of {safe_svg_text(user_input)}'}
                 ])
                 if 'ErrorHandler' not in actors:
                     actors['ErrorHandler'] = 'Error Management'
@@ -3239,8 +3038,8 @@ def customize_fallback_for_variation(diagram_data, diagram_type, style, user_inp
                         current_items = customized_data[category]
                         detailed_items = current_items.copy()
                         detailed_items.extend([
-                            f'Internal {category[:-1]} factor for {user_input}',
-                            f'Market-related {category[:-1]} in {user_input}',
+                            f'Internal {category[:-1]} factor for {safe_svg_text(user_input)}',
+                            f'Market-related {category[:-1]} in {safe_svg_text(user_input)}',
                             f'Long-term {category[:-1]} consideration'
                         ])
                         customized_data[category] = detailed_items
@@ -3256,7 +3055,7 @@ def customize_fallback_for_variation(diagram_data, diagram_type, style, user_inp
                 for category in ['strengths', 'weaknesses', 'opportunities', 'threats']:
                     if category in customized_data and isinstance(customized_data[category], list):
                         enhanced_items = customized_data[category].copy()
-                        enhanced_items.append(f'Strategic action for {category}: Leverage for {user_input}')
+                        enhanced_items.append(f'Strategic action for {category}: Leverage for {safe_svg_text(user_input)}')
                         customized_data[category] = enhanced_items
                         
         elif diagram_type == 'timeline' and 'events' in customized_data:
@@ -3265,8 +3064,8 @@ def customize_fallback_for_variation(diagram_data, diagram_type, style, user_inp
                 # Add milestone events and sub-events
                 detailed_events = dict(events)
                 for key, value in list(events.items()):
-                    detailed_events[f'{key} - Preparation'] = f'Prepare for {value}'
-                    detailed_events[f'{key} - Review'] = f'Review outcomes of {value}'
+                    detailed_events[f'{safe_svg_text(key)} - Preparation'] = f'Prepare for {safe_svg_text(value)}'
+                    detailed_events[f'{safe_svg_text(key)} - Review'] = f'Review outcomes of {safe_svg_text(value)}'
                 customized_data['events'] = detailed_events
                 
             elif style == 'compact':
@@ -3280,9 +3079,9 @@ def customize_fallback_for_variation(diagram_data, diagram_type, style, user_inp
             elif style == 'enhanced':
                 # Add risk points and success criteria
                 enhanced_events = dict(events)
-                enhanced_events['Risk Checkpoint'] = f'Assess risks for {user_input}'
-                enhanced_events['Quality Gate'] = f'Quality review for {user_input}'
-                enhanced_events['Success Validation'] = f'Validate success of {user_input}'
+                enhanced_events['Risk Checkpoint'] = f'Assess risks for {safe_svg_text(user_input)}'
+                enhanced_events['Quality Gate'] = f'Quality review for {safe_svg_text(user_input)}'
+                enhanced_events['Success Validation'] = f'Validate success of {safe_svg_text(user_input)}'
                 customized_data['events'] = enhanced_events
                 
         # Add similar logic for other diagram types
@@ -3291,21 +3090,21 @@ def customize_fallback_for_variation(diagram_data, diagram_type, style, user_inp
             if style == 'detailed':
                 detailed_tasks = dict(tasks)
                 for task_name, task_info in tasks.items():
-                    detailed_tasks[f'{task_name} - Planning'] = f'Plan for {task_name}'
-                    detailed_tasks[f'{task_name} - Review'] = f'Review {task_name}'
+                    detailed_tasks[f'{safe_svg_text(task_name)} - Planning'] = f'Plan for {safe_svg_text(task_name)}'
+                    detailed_tasks[f'{safe_svg_text(task_name)} - Review'] = f'Review {safe_svg_text(task_name)}'
                 customized_data['tasks'] = detailed_tasks
             elif style == 'compact':
                 compact_tasks = dict(list(tasks.items())[:3])
                 customized_data['tasks'] = compact_tasks
             elif style == 'enhanced':
                 enhanced_tasks = dict(tasks)
-                enhanced_tasks['Risk Management'] = f'Manage risks for {user_input}'
-                enhanced_tasks['Quality Assurance'] = f'Ensure quality for {user_input}'
+                enhanced_tasks['Risk Management'] = f'Manage risks for {safe_svg_text(user_input)}'
+                enhanced_tasks['Quality Assurance'] = f'Ensure quality for {safe_svg_text(user_input)}'
                 customized_data['tasks'] = enhanced_tasks
                 
         return customized_data
     except Exception as e:
-        logger.error(f"Error customizing fallback data: {e}")
+        logger.error(f"Error customizing fallback data: {str(e)}")
         return diagram_data
 
 def generate_variation_svg(diagram_data, diagram_type, variation):
@@ -3413,9 +3212,9 @@ def generate_variation_svg(diagram_data, diagram_type, variation):
             return generate_enhanced_flowchart_svg(diagram_data.get("steps", {}))
     
     except Exception as e:
-        logger.error(f"Error generating {variation.get('style', 'unknown')} variation SVG for {diagram_type}: {e}")
+        logger.error(f"Error generating {variation.get('style', 'unknown')} variation SVG for {diagram_type}: {str(e)}")
         # Return a simple error SVG
-        return generate_error_svg(f"Error generating {diagram_type} variation")
+        return generate_error_svg(f"Error generating {safe_svg_text(diagram_type)} variation")
 
 def get_variation_specific_prompt(base_prompt, diagram_type, style, user_input):
     """Generate variation-specific prompts to create structurally different diagrams"""
@@ -3475,15 +3274,15 @@ def get_variation_specific_prompt(base_prompt, diagram_type, style, user_input):
         elif style == 'enhanced':
             type_specific = "Add strategic action items and cross-category relationships for each SWOT element."
     
-    variation_prompt = f"""{base_prompt}
+    variation_prompt = f"""{safe_svg_text(base_prompt)}
 
 VARIATION STYLE: {style.upper()}
-{instruction['approach']} with the following specifications:
-{instruction['specifics']}
+{escape_xml_text(instruction['approach'])} with the following specifications:
+{escape_xml_text(instruction['specifics'])}
 
-{type_specific}
+{safe_svg_text(type_specific)}
 
-IMPORTANT: Create a structurally DIFFERENT diagram than other variations - not just different colors or themes, but different content, complexity, and approach for the topic: {user_input}"""
+IMPORTANT: Create a structurally DIFFERENT diagram than other variations - not just different colors or themes, but different content, complexity, and approach for the topic: {safe_svg_text(user_input)}"""
 
     return variation_prompt
 
@@ -3503,7 +3302,7 @@ def generate_diagram_variations():
     try:
         logger.info(f"Processing POST request for diagram variations")
         data = request.json
-        logger.info(f"Request data: {data}")
+        logger.info(f"Request data: {str(data)}")
         
         if not data:
             logger.error("No JSON data received")
@@ -3512,13 +3311,13 @@ def generate_diagram_variations():
         user_input = data.get('userInput', '').strip()
         diagram_type = data.get('diagramType', 'flowchart').strip()
         
-        logger.info(f"User input: '{user_input}', Diagram type: '{diagram_type}'")
+        logger.info(f"User input: '{safe_svg_text(user_input)}', Diagram type: '{safe_svg_text(diagram_type)}'")
         
         if not user_input:
             logger.error("User input is required but was empty")
             return jsonify({"error": "User input is required"}), 400
 
-        logger.info(f"Generating 4 variations of {diagram_type} for: {user_input[:50]}...")
+        logger.info(f"Generating 4 variations of {safe_svg_text(diagram_type)} for: {safe_svg_text(user_input, 50)}...")
 
         # Define 4 different visual approaches for the same diagram type
         variations = [
@@ -3569,7 +3368,7 @@ def generate_diagram_variations():
                             messages=[
                                 {
                                     "role": "system", 
-                                    "content": f"You are a {diagram_type} expert. Return only valid JSON that matches the specified format exactly. Focus on {variation['style']} style."
+                                    "content": f"You are a {safe_svg_text(diagram_type)} expert. Return only valid JSON that matches the specified format exactly. Focus on {escape_xml_text(variation['style'])} style."
                                 },
                                 {
                                     "role": "user", 
@@ -3585,7 +3384,7 @@ def generate_diagram_variations():
                         validate_diagram_json(diagram_data, diagram_type)
                         
                     except Exception as e:
-                        logger.error(f"AI error for {diagram_type} variation {i+1}: {e}")
+                        logger.error(f"AI error for {safe_svg_text(diagram_type)} variation {i+1}: {str(e)}")
                         diagram_data = get_fallback_data(diagram_type, user_input)
                         # Customize fallback data for variations
                         diagram_data = customize_fallback_for_variation(diagram_data, diagram_type, variation['style'], user_input)
@@ -3598,23 +3397,23 @@ def generate_diagram_variations():
 
                 # Create variation option
                 option = {
-                    "id": f"{diagram_type}_{variation['id']}_{int(datetime.now().timestamp())}",
+                    "id": f"{safe_svg_text(diagram_type)}_{escape_xml_text(variation['id'])}_{int(datetime.now().timestamp())}",
                     "templateName": variation['name'],
                     "diagramType": diagram_type,
                     "content": svg_content,
                     "isDiagram": True,
                     "timestamp": datetime.now().isoformat(),
-                    "description": f"A {variation['style']} style {diagram_type} visualization",
+                    "description": f"A {escape_xml_text(variation['style'])} style {safe_svg_text(diagram_type)} visualization",
                     "variation": variation['style'],
                     "colorTheme": variation['color_theme'],
                     "uniqueId": variation['id']
                 }
                 
                 diagram_variations.append(option)
-                logger.info(f"Generated {diagram_type} variation {i+1} ({variation['style']}) successfully")
+                logger.info(f"Generated {safe_svg_text(diagram_type)} variation {i+1} ({escape_xml_text(variation['style'])}) successfully")
                 
             except Exception as e:
-                logger.error(f"Error generating {diagram_type} variation {i+1}: {e}")
+                logger.error(f"Error generating {safe_svg_text(diagram_type)} variation {i+1}: {str(e)}")
                 # Create a fallback variation instead of skipping
                 try:
                     fallback_data = get_fallback_data(diagram_type, user_input)
@@ -3622,22 +3421,22 @@ def generate_diagram_variations():
                     fallback_svg = generate_variation_svg(fallback_data, diagram_type, variation)
                     
                     fallback_option = {
-                        "id": f"{diagram_type}_{variation['id']}_fallback_{int(datetime.now().timestamp())}",
-                        "templateName": f"{variation['name']} (Fallback)",
+                        "id": f"{safe_svg_text(diagram_type)}_{escape_xml_text(variation['id'])}_fallback_{int(datetime.now().timestamp())}",
+                        "templateName": f"{escape_xml_text(variation['name'])} (Fallback)",
                         "diagramType": diagram_type,
                         "content": fallback_svg,
                         "isDiagram": True,
                         "timestamp": datetime.now().isoformat(),
-                        "description": f"A fallback {variation['style']} style {diagram_type} visualization",
+                        "description": f"A fallback {escape_xml_text(variation['style'])} style {safe_svg_text(diagram_type)} visualization",
                         "variation": variation['style'],
                         "colorTheme": variation['color_theme'],
                         "uniqueId": variation['id']
                     }
                     
                     diagram_variations.append(fallback_option)
-                    logger.info(f"Generated fallback {diagram_type} variation {i+1} ({variation['style']}) successfully")
+                    logger.info(f"Generated fallback {safe_svg_text(diagram_type)} variation {i+1} ({escape_xml_text(variation['style'])}) successfully")
                 except Exception as fallback_error:
-                    logger.error(f"Failed to generate fallback variation {i+1}: {fallback_error}")
+                    logger.error(f"Failed to generate fallback variation {i+1}: {safe_svg_text(fallback_error)}")
                     continue
 
         # Ensure we have exactly 4 variations
@@ -3649,16 +3448,16 @@ def generate_diagram_variations():
                 fallback_svg = generate_variation_svg(fallback_data, diagram_type, variations[missing_index])
                 
                 fallback_option = {
-                    "id": f"{diagram_type}_fallback_{missing_index}_{int(datetime.now().timestamp())}",
+                    "id": f"{safe_svg_text(diagram_type)}_fallback_{safe_svg_text(missing_index)}_{int(datetime.now().timestamp())}",
                     "templateName": f"{diagram_type.title()} - Fallback {missing_index + 1}",
                     "diagramType": diagram_type,
                     "content": fallback_svg,
                     "isDiagram": True,
                     "timestamp": datetime.now().isoformat(),
-                    "description": f"A fallback {diagram_type} visualization",
+                    "description": f"A fallback {safe_svg_text(diagram_type)} visualization",
                     "variation": "fallback",
                     "colorTheme": "blue",
-                    "uniqueId": f"fallback_{missing_index}"
+                    "uniqueId": f"fallback_{safe_svg_text(missing_index)}"
                 }
                 
                 diagram_variations.append(fallback_option)
@@ -3689,16 +3488,16 @@ if __name__ == '__main__':
     local_ip = get_local_ip()
     print("Starting Complete AI Generator Backend")
     print(f"Environment: {'Production' if not debug_mode else 'Development'}")
-    print(f"Port: {port}")
+    print(f"Port: {str(port)}")
     print(f"Groq API Key configured: {'Yes' if GROQ_API_KEY else 'No'}")
     
     if debug_mode:
         print("Server available at:")
-        print(f"  • Local: http://127.0.0.1:{port}")
-        print(f"  • Network: http://{local_ip}:{port}")
+        print(f"  • Local: http://127.0.0.1:{str(port)}")
+        print(f"  • Network: http://{local_ip}:{str(port)}")
         print("Health check endpoints:")
-        print(f"  • http://127.0.0.1:{port}/health")
-        print(f"  • http://{local_ip}:{port}/health")
+        print(f"  • http://127.0.0.1:{str(port)}/health")
+        print(f"  • http://{local_ip}:{str(port)}/health")
     
     print("Features:")
     print("   • 12 diagram types with AI-powered generation")
@@ -3719,3 +3518,4 @@ if __name__ == '__main__':
     print("   • Railway deployment ready")
     
     app.run(debug=debug_mode, port=port, host='0.0.0.0')
+    

@@ -1,8 +1,6 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:my_flutter_app/screens/login_screen.dart';
 import 'package:my_flutter_app/widgets/connection_test_widget.dart';
 import 'screens/content_generator_screen.dart';
 import 'screens/document_generator_screen.dart';
@@ -13,14 +11,16 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase Core for Remote Config
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  
+
   // Initialize configuration service first
   await ConfigService().initialize();
-  
+
   // Then initialize API service with config
   ApiService.initialize();
-  
+
   runApp(const MyApp());
 }
 
@@ -33,18 +33,7 @@ class MyApp extends StatelessWidget {
       title: 'AI Content Generator Pro',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.getAppTheme(),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasData) {
-            return const MainNavigationScreen();
-          }
-          return const LoginScreen();
-        },
-      ),
+      home: const MainNavigationScreen(),
       routes: {
         '/content_generator': (context) => const ContentGeneratorScreen(),
         '/document_generator': (context) => const DocumentGeneratorScreen(),
@@ -91,13 +80,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               );
             },
             tooltip: 'Test Connection',
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-            },
-            tooltip: 'Logout',
           ),
         ],
       ),

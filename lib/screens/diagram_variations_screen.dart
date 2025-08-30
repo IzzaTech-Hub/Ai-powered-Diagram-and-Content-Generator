@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../models/generated_content.dart';
 import '../models/napkin_template.dart';
 import '../services/api_service.dart';
@@ -154,15 +153,7 @@ class _DiagramVariationsScreenState extends State<DiagramVariationsScreen>
     }
   }
 
-  Future<void> _handleDownload(GeneratedContent content) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ErrorHandler.showErrorSnackBar(
-        context,
-        'Please log in to download diagrams',
-      );
-      return;
-    }
+      Future<void> _handleDownload(GeneratedContent content) async {
 
     try {
       final fileName = '${content.templateName}_${DateTime.now().millisecondsSinceEpoch}.svg';

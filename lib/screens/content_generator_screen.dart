@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:my_flutter_app/screens/login_screen.dart';
 import '../models/generated_content.dart';
 import '../models/napkin_template.dart';
 import '../services/api_service.dart';
@@ -61,7 +59,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
         id: 'sequence',
         name: 'Sequence Diagram',
         description:
-            'Actor interactions and message flow between system components',
+            ' and message flow between system components',
         napkinType: 'sequence',
         icon: Icons.timeline,
         color: const Color(0xFF059669),
@@ -495,23 +493,8 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
     HapticFeedback.selectionClick();
   }
 
-  // Updated method to handle the download and authentication check
-  Future<void> _handleDownload(String svgContent, String diagramName) async {
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) {
-      // User is not logged in, navigate to the LoginScreen
-      if (mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder:
-                (context) =>
-                    const LoginScreen(), // Using your LoginScreen widget
-          ),
-        );
-      }
-      return;
-    }
+      // Updated method to handle the download
+    Future<void> _handleDownload(String svgContent, String diagramName) async {
 
     // User is logged in, proceed with the download
     try {
@@ -856,11 +839,11 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
 
   Widget _buildDiagramTypeDropdown() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
+          child: Column(
             children: [
               Container(
                 padding: const EdgeInsets.all(6),
@@ -874,25 +857,24 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                   size: 20,
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Select Diagram Type',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.indigo,
-                      ),
+              const SizedBox(height: 8),
+              Column(
+                children: [
+                  const Text(
+                    'Select Diagram Type',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.indigo,
                     ),
-                    Text(
-                      'Choose the most suitable visualization for your concept',
-                      style: TextStyle(fontSize: 13, color: Colors.grey),
-                    ),
-                  ],
-                ),
+                    textAlign: TextAlign.center,
+                  ),
+                  Text(
+                    'Choose the most suitable visualization for your concept',
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ],
           ),
@@ -921,31 +903,34 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                     return DropdownMenuItem<NapkinTemplate>(
                       value: template,
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Icon(template.icon, color: template.color),
                           const SizedBox(width: 16),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                template.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.black87,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  template.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(
-                                width: MediaQuery.of(context).size.width * 0.5,
-                                child: Text(
+                                Text(
                                   template.description,
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Colors.grey,
                                   ),
                                   overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
