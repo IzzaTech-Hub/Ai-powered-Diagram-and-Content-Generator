@@ -6,7 +6,6 @@ import 'package:my_flutter_app/screens/login_screen.dart';
 import 'package:my_flutter_app/widgets/connection_test_widget.dart';
 import 'screens/content_generator_screen.dart';
 import 'screens/document_generator_screen.dart';
-import 'screens/config_screen.dart';
 import 'constants/app_theme.dart';
 import 'services/api_service.dart';
 import 'services/config_service.dart';
@@ -81,18 +80,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       appBar: AppBar(
         title: const Text('AI Content Generator Pro'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ConfigScreen(),
-                ),
-              );
-            },
-            tooltip: 'Configuration',
-          ),
           IconButton(
             icon: const Icon(Icons.network_check),
             onPressed: () {

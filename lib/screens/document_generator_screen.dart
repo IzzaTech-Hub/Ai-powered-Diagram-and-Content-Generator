@@ -364,7 +364,7 @@ class _DocumentGeneratorScreenState extends State<DocumentGeneratorScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Document Generator'),
+        title: const Text('AI Documents'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -538,7 +538,7 @@ class _DocumentGeneratorScreenState extends State<DocumentGeneratorScreen>
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Create professional documents with AI',
+                        'Create professional documents',
                         style: TextStyle(
                           fontSize: 16,
                           color: Colors.grey.shade600,
@@ -934,7 +934,6 @@ class _DocumentGeneratorScreenState extends State<DocumentGeneratorScreen>
                 const SizedBox(width: 12),
                 OutlinedButton.icon(
                   onPressed: _clearAll,
-                  icon: const Icon(Icons.clear_all),
                   label: const Text('Clear'),
                   style: OutlinedButton.styleFrom(
                     padding: EdgeInsets.symmetric(

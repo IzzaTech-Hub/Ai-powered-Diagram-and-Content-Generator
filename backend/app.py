@@ -1669,13 +1669,13 @@ def generate_themed_sequence_svg(actors, interactions, variation, theme):
     
     svg_elements = [
         '<defs>',
-        '''
+        f'''
         <linearGradient id="actorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
-        '''
+        f'''
         <marker id="seqArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="{theme['accent']}"/>
         </marker>
@@ -1750,13 +1750,13 @@ def generate_themed_state_svg(states, transitions, variation, theme):
     
     svg_elements = [
         '<defs>',
-        '''
+        f'''
         <linearGradient id="stateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" style="stop-color:{theme['primary']};stop-opacity:1" />
             <stop offset="100%" style="stop-color:{theme['secondary']};stop-opacity:1" />
         </linearGradient>
         ''',
-        '''
+        f'''
         <marker id="stateArrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
             <polygon points="0 0, 10 3.5, 0 7" fill="{theme['accent']}"/>
         </marker>
