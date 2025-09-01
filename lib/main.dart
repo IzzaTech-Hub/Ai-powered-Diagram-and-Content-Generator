@@ -8,6 +8,8 @@ import 'screens/document_generator_screen.dart';
 import 'constants/app_theme.dart';
 import 'services/api_service.dart';
 import 'services/config_service.dart';
+import 'utils/app_sizes.dart';
+import 'utils/permission_helper.dart';
 
 import 'firebase_options.dart';
 
@@ -64,6 +66,7 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
+  bool _permissionRequested = false;
 
   Widget _getScreen(int index) {
     switch (index) {
@@ -77,7 +80,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // Request storage permissions on app startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestInitialPermissions();
+    });
+  }
+
+  Future<void> _requestInitialPermissions() async {
+    if (!_permissionRequested) {
+      _permissionRequested = true;
+      await PermissionHelper.requestStoragePermission(context);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Initialize AppSizes with current context
+    AppSizes.init(context);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('AI Content Generator Pro'),

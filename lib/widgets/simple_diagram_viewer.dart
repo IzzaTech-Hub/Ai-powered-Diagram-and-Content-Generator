@@ -4,10 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../models/generated_content.dart';
 import '../models/napkin_template.dart';
 import '../screens/diagram_editing_screen.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-import 'dart:convert';
+import '../services/start_feedback_widget.dart';
+
 
 /// Normalizes SVG colors to 6-digit hex format for Flutter SVG compatibility
 /// Handles #RGB, #RRGGBB, rgb(r,g,b), rgba(#hex,alpha), and other color formats
@@ -184,7 +182,6 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
   final TransformationController _transformationController = TransformationController();
   late String _currentSvg;
   bool _isFullscreen = false;
-  bool _svgRenderingFailed = false;
   
 
 
@@ -201,7 +198,6 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
     if (oldWidget.generatedContent.content != widget.generatedContent.content) {
       setState(() {
         _currentSvg = normalizeSvgColors(widget.generatedContent.content);
-        _svgRenderingFailed = false; // Reset failure flag
       });
     }
   }
@@ -285,34 +281,8 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
             // Always try to render the original SVG first
             print('🔍 Attempting to render original SVG (${_currentSvg.length} chars)');
             
-            return FutureBuilder<String>(
-              future: Future.delayed(const Duration(seconds: 5), () => _currentSvg),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Container(
-                    width: 200,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(strokeWidth: 2),
-                          SizedBox(height: 4),
-                          Text(
-                            'Loading...',
-                            style: TextStyle(fontSize: 10),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-                
-                return SvgPicture.string(
+            // Remove unnecessary delay and loading for preview
+            return SvgPicture.string(
                   _currentSvg,
                   fit: BoxFit.contain,
                   width: 200, // Fixed width for consistent thumbnails
@@ -325,9 +295,7 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
+                      child: Icon(Icons.image, color: Colors.grey, size: 40),
                     ),
                   ),
                   errorBuilder: (context, error, stackTrace) {
@@ -350,21 +318,7 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(strokeWidth: 2, color: Colors.blue),
-                              SizedBox(height: 4),
-                              Text(
-                                'Retrying SVG',
-                                style: TextStyle(
-                                  color: Colors.blue,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
+                          child: Icon(Icons.refresh, color: Colors.blue, size: 30),
                         ),
                       ),
                       errorBuilder: (context, retryError, stackTrace) {
@@ -407,8 +361,6 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
                     );
                   },
                 );
-              },
-            );
           },
         ),
       ),
@@ -456,7 +408,7 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
                 fit: BoxFit.contain,
                 width: 600, // Large size for readability
                 height: 450,
-                placeholderBuilder: (context) => const CircularProgressIndicator(),
+                placeholderBuilder: (context) => const Icon(Icons.image, color: Colors.grey, size: 80),
                 errorBuilder: (context, error, stackTrace) {
                   print('💥 SVG Error in normal view: $error');
                   return Container(
@@ -505,6 +457,31 @@ class _SimpleDiagramViewerState extends State<SimpleDiagramViewer> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Feedback button
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.orange.shade600, Colors.orange.shade400],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.orange.withOpacity(0.3),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: StarFeedbackWidget(
+                  size: 20,
+                  mainContext: context,
+                  isShowText: false,
+                  icon: Icons.feedback,
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+              
               // Edit button - opens dedicated editing screen
               Container(
                 decoration: BoxDecoration(

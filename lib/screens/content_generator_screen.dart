@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import '../models/generated_content.dart';
 import '../models/napkin_template.dart';
 import '../services/api_service.dart';
+import '../services/start_feedback_widget.dart';
 import '../utils/error_handler.dart';
 import '../widgets/simple_diagram_viewer.dart';
 import '../utils/platform_download.dart';
 import '../utils/permission_helper.dart';
+import 'diagram_editing_screen.dart';
 import 'package:flutter/foundation.dart';
 
 class ContentGeneratorScreen extends StatefulWidget {
@@ -2249,6 +2251,14 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.feedback, color: Colors.orange),
+                title: const Text('Give Feedback'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showFeedbackForVariation(context, variation);
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.delete),
                 title: const Text('Delete Variation'),
                 onTap: () {
@@ -2284,6 +2294,31 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
     });
   }
 
+  // Show feedback for variation
+  void _showFeedbackForVariation(BuildContext context, GeneratedContent variation) {
+    // Directly show the feedback widget using a simple method
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Provide Feedback"),
+          content: StarFeedbackWidget(
+            size: 24,
+            mainContext: context,
+            isShowText: true,
+            icon: Icons.feedback,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Edit diagram - Navigate to full screen editor
   void _editDiagram(GeneratedContent variation) {
     final template = _diagramTemplates.firstWhere(
@@ -2293,25 +2328,35 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => SimpleDiagramViewer(
-          generatedContent: variation,
+        builder: (context) => DiagramEditingScreen(
           template: template,
-          onDiagramUpdated: (updatedContent) {
-            setState(() {
-              final index = _currentVariations.indexOf(variation);
-              if (index != -1) {
-                _currentVariations[index] = updatedContent;
-                if (_selectedVariation == variation) {
-                  _selectedVariation = updatedContent;
-                }
-              }
-            });
-          },
-          originalPrompt: variation.originalPrompt ?? '',
           svgContent: variation.content,
-          isPreview: false,
+          originalPrompt: variation.originalPrompt ?? _inputController.text,
         ),
       ),
-    );
+    ).then((result) {
+      // Handle any result from the editing screen
+      if (result != null && result['updated'] == true) {
+        // Update the variation with the edited content
+        final updatedContent = GeneratedContent(
+          templateName: variation.templateName,
+          content: result['svg'],
+          isDiagram: variation.isDiagram,
+          timestamp: DateTime.now(),
+          originalPrompt: variation.originalPrompt,
+          diagramType: variation.diagramType,
+        );
+        
+        setState(() {
+          final index = _currentVariations.indexOf(variation);
+          if (index != -1) {
+            _currentVariations[index] = updatedContent;
+            if (_selectedVariation == variation) {
+              _selectedVariation = updatedContent;
+            }
+          }
+        });
+      }
+    });
   }
 }

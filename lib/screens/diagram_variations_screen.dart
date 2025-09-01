@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../models/generated_content.dart';
 import '../models/napkin_template.dart';
 import '../services/api_service.dart';
+import '../services/start_feedback_widget.dart';
 import '../utils/error_handler.dart';
 import '../widgets/simple_diagram_viewer.dart';
 import '../utils/platform_download.dart';
@@ -152,6 +153,29 @@ class _DiagramVariationsScreenState extends State<DiagramVariationsScreen>
         ),
       );
     }
+  }
+
+  void _showFeedback() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Provide Feedback"),
+          content: StarFeedbackWidget(
+            size: 24,
+            mainContext: context,
+            isShowText: true,
+            icon: Icons.feedback,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
       Future<void> _handleDownload(GeneratedContent content) async {
@@ -685,6 +709,22 @@ class _DiagramVariationsScreenState extends State<DiagramVariationsScreen>
           label: Text(
             'Copy',
             style: TextStyle(color: Colors.grey.shade700),
+          ),
+        ),
+        const SizedBox(width: 8),
+        OutlinedButton.icon(
+          onPressed: () => _showFeedback(),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            side: BorderSide(color: Colors.orange.shade400),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          icon: Icon(Icons.feedback, color: Colors.orange.shade700),
+          label: Text(
+            'Feedback',
+            style: TextStyle(color: Colors.orange.shade700),
           ),
         ),
       ],
