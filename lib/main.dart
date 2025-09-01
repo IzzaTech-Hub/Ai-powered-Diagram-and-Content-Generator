@@ -1,19 +1,27 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:my_flutter_app/widgets/connection_test_widget.dart';
 import 'screens/content_generator_screen.dart';
 import 'screens/document_generator_screen.dart';
 import 'constants/app_theme.dart';
 import 'services/api_service.dart';
 import 'services/config_service.dart';
+
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase Core for Remote Config
+  // Initialize Firebase Core
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  
+  // Initialize Firebase Analytics
+  FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+  
+  // Log app_open event
+  await analytics.logAppOpen();
 
   // Initialize configuration service first
   await ConfigService().initialize();
@@ -21,11 +29,13 @@ void main() async {
   // Then initialize API service with config
   ApiService.initialize();
 
-  runApp(const MyApp());
+  runApp(MyApp(analytics: analytics));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final FirebaseAnalytics analytics;
+  
+  const MyApp({super.key, required this.analytics});
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +44,9 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.getAppTheme(),
       home: const MainNavigationScreen(),
+      navigatorObservers: [
+        FirebaseAnalyticsObserver(analytics: analytics),
+      ],
       routes: {
         '/content_generator': (context) => const ContentGeneratorScreen(),
         '/document_generator': (context) => const DocumentGeneratorScreen(),

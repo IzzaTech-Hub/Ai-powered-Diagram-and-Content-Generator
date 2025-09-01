@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../utils/error_handler.dart';
 import '../widgets/simple_diagram_viewer.dart';
 import '../utils/platform_download.dart';
+import '../utils/permission_helper.dart';
 import 'package:flutter/foundation.dart';
 
 class ContentGeneratorScreen extends StatefulWidget {
@@ -55,28 +56,28 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
         gradientColors: [const Color(0xFF2563EB), const Color(0xFF3B82F6)],
         promptInstruction: '',
       ),
-      NapkinTemplate(
-        id: 'sequence',
-        name: 'Sequence Diagram',
-        description:
-            ' and message flow between system components',
-        napkinType: 'sequence',
-        icon: Icons.timeline,
-        color: const Color(0xFF059669),
-        gradientColors: [const Color(0xFF059669), const Color(0xFF10B981)],
-        promptInstruction: '',
-      ),
-      NapkinTemplate(
-        id: 'state',
-        name: 'State Diagram',
-        description:
-            'System states, transitions, and state machine visualization',
-        napkinType: 'state',
-        icon: Icons.radio_button_checked,
-        color: const Color(0xFFDC2626),
-        gradientColors: [const Color(0xFFDC2626), const Color(0xFFEF4444)],
-        promptInstruction: '',
-      ),
+      // NapkinTemplate(
+      //   id: 'sequence',
+      //   name: 'Sequence Diagram',
+      //   description:
+      //       ' and message flow between system components',
+      //   napkinType: 'sequence',
+      //   icon: Icons.timeline,
+      //   color: const Color(0xFF059669),
+      //   gradientColors: [const Color(0xFF059669), const Color(0xFF10B981)],
+      //   promptInstruction: '',
+      // ),
+      // NapkinTemplate(
+      //   id: 'state',
+      //   name: 'State Diagram',
+      //   description:
+      //       'System states, transitions, and state machine visualization',
+      //   napkinType: 'state',
+      //   icon: Icons.radio_button_checked,
+      //   color: const Color(0xFFDC2626),
+      //   gradientColors: [const Color(0xFFDC2626), const Color(0xFFEF4444)],
+      //   promptInstruction: '',
+      // ),
     ],
     'Analysis & Planning': [
       NapkinTemplate(
@@ -90,29 +91,29 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
         gradientColors: [const Color(0xFF7C3AED), const Color(0xFF8B5CF6)],
         promptInstruction: '',
       ),
-      NapkinTemplate(
-        id: 'mindmap',
-        name: 'Mind Map',
-        description:
-            'Hierarchical concept visualization with central topic and branches',
-        napkinType: 'mind map',
-        icon: Icons.psychology,
-        color: const Color(0xFFEA580C),
-        gradientColors: [const Color(0xFFEA580C), const Color(0xFFF97316)],
-        promptInstruction: '',
-      ),
+      // NapkinTemplate(
+      //   id: 'mindmap',
+      //   name: 'Mind Map',
+      //   description:
+      //       'Hierarchical concept visualization with central topic and branches',
+      //   napkinType: 'mind map',
+      //   icon: Icons.psychology,
+      //   color: const Color(0xFFEA580C),
+      //   gradientColors: [const Color(0xFFEA580C), const Color(0xFFF97316)],
+      //   promptInstruction: '',
+      // ),
     ],
     'Timeline & Project': [
-      NapkinTemplate(
-        id: 'timeline',
-        name: 'Timeline',
-        description: 'Chronological event sequence with phases and milestones',
-        napkinType: 'timeline',
-        icon: Icons.schedule,
-        color: const Color(0xFF0891B2),
-        gradientColors: [const Color(0xFF0891B2), const Color(0xFF06B6D4)],
-        promptInstruction: '',
-      ),
+      // NapkinTemplate(
+      //   id: 'timeline',
+      //   name: 'Timeline',
+      //   description: 'Chronological event sequence with phases and milestones',
+      //   napkinType: 'timeline',
+      //   icon: Icons.schedule,
+      //   color: const Color(0xFF0891B2),
+      //   gradientColors: [const Color(0xFF0891B2), const Color(0xFF06B6D4)],
+      //   promptInstruction: '',
+      // ),
       NapkinTemplate(
         id: 'gantt',
         name: 'Gantt Chart',
@@ -137,17 +138,17 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
       ),
     ],
     'Technical & System': [
-      NapkinTemplate(
-        id: 'erd',
-        name: 'Entity Relationship',
-        description:
-            'Database schema with entities, attributes, and relationships',
-        napkinType: 'erd',
-        icon: Icons.storage,
-        color: const Color(0xFF059669),
-        gradientColors: [const Color(0xFF059669), const Color(0xFF10B981)],
-        promptInstruction: '',
-      ),
+      // NapkinTemplate(
+      //   id: 'erd',
+      //   name: 'Entity Relationship',
+      //   description:
+      //       'Database schema with entities, attributes, and relationships',
+      //   napkinType: 'erd',
+      //   icon: Icons.storage,
+      //   color: const Color(0xFF059669),
+      //   gradientColors: [const Color(0xFF059669), const Color(0xFF10B981)],
+      //   promptInstruction: '',
+      // ),
       NapkinTemplate(
         id: 'class',
         name: 'Class Diagram',
@@ -159,16 +160,16 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
         gradientColors: [const Color(0xFF7C2D12), const Color(0xFF9A3412)],
         promptInstruction: '',
       ),
-      NapkinTemplate(
-        id: 'network',
-        name: 'Network Diagram',
-        description: 'System connectivity, topology, and network architecture',
-        napkinType: 'network',
-        icon: Icons.hub,
-        color: const Color(0xFF1E40AF),
-        gradientColors: [const Color(0xFF1E40AF), const Color(0xFF2563EB)],
-        promptInstruction: '',
-      ),
+      // NapkinTemplate(
+      //   id: 'network',
+      //   name: 'Network Diagram',
+      //   description: 'System connectivity, topology, and network architecture',
+      //   napkinType: 'network',
+      //   icon: Icons.hub,
+      //   color: const Color(0xFF1E40AF),
+      //   gradientColors: [const Color(0xFF1E40AF), const Color(0xFF2563EB)],
+      //   promptInstruction: '',
+      // ),
       NapkinTemplate(
         id: 'architecture',
         name: 'Architecture',
@@ -495,8 +496,20 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
 
       // Updated method to handle the download
     Future<void> _handleDownload(String svgContent, String diagramName) async {
+    // Check and request permissions first (especially for Android)
+    final hasPermission = await PermissionHelper.requestStoragePermission(context);
+    
+    if (!hasPermission) {
+      if (mounted) {
+        ErrorHandler.showErrorSnackBar(
+          context, 
+          'Storage permission is required to download diagrams. Please enable it in your device settings.'
+        );
+      }
+      return;
+    }
 
-    // User is logged in, proceed with the download
+    // Proceed with the download
     try {
       final fileName =
           '${diagramName}_${DateTime.now().millisecondsSinceEpoch}.svg';
@@ -507,7 +520,10 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
       }
     } catch (e) {
       if (mounted) {
-        ErrorHandler.showErrorSnackBar(context, e.toString());
+        ErrorHandler.showErrorSnackBar(
+          context, 
+          'Failed to download diagram: ${e.toString()}'
+        );
       }
     }
   }

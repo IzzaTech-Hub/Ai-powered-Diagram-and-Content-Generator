@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../utils/error_handler.dart';
 import '../widgets/simple_diagram_viewer.dart';
 import '../utils/platform_download.dart';
+import '../utils/permission_helper.dart';
 import 'diagram_editing_screen.dart';
 
 class DiagramVariationsScreen extends StatefulWidget {
@@ -154,13 +155,26 @@ class _DiagramVariationsScreenState extends State<DiagramVariationsScreen>
   }
 
       Future<void> _handleDownload(GeneratedContent content) async {
+    // Check and request permissions first (especially for Android)
+    final hasPermission = await PermissionHelper.requestStoragePermission(context);
+    
+    if (!hasPermission) {
+      ErrorHandler.showErrorSnackBar(
+        context, 
+        'Storage permission is required to download diagrams. Please enable it in your device settings.'
+      );
+      return;
+    }
 
     try {
       final fileName = '${content.templateName}_${DateTime.now().millisecondsSinceEpoch}.svg';
       final message = await saveSvgToDownloads(content.content, fileName);
       ErrorHandler.showSuccessSnackBar(context, message);
     } catch (e) {
-      ErrorHandler.showErrorSnackBar(context, e.toString());
+      ErrorHandler.showErrorSnackBar(
+        context, 
+        'Failed to download diagram: ${e.toString()}'
+      );
     }
   }
 
