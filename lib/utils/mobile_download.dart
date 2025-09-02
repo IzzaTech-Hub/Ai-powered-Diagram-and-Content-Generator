@@ -1,25 +1,46 @@
 import 'dart:io' as io;
-import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 Future<String> saveSvgToDownloads(String svgContent, String fileName) async {
   try {
     if (io.Platform.isAndroid) {
-      // Request storage permission first
-      final hasPermission = await _requestStoragePermission();
-      
-      if (!hasPermission) {
-        return 'Storage permission is required to download files. Please grant permission in your device settings.';
+      // Try to save directly first (for modern Android with proper permissions)
+      try {
+        return await _saveToDownloads(svgContent, fileName);
+      } catch (e) {
+        print('Direct save failed, trying alternative method: $e');
+        // Fallback to sharing method for Android 11+
+        return await _shareFile(svgContent, fileName);
       }
-      
-      // Try to save to Downloads folder
-      return await _saveToDownloads(svgContent, fileName);
     } else {
       // For other platforms, use a simple file save
       return await _saveToDocuments(svgContent, fileName);
     }
   } catch (e) {
     return 'Error preparing file for download: ${e.toString()}';
+  }
+}
+
+/// Alternative method using sharing for modern Android
+Future<String> _shareFile(String svgContent, String fileName) async {
+  try {
+    // Create temporary file
+    final tempDir = await getTemporaryDirectory();
+    final tempFile = io.File('${tempDir.path}/$fileName');
+    await tempFile.writeAsString(svgContent);
+    
+    // Share the file - this allows user to save it wherever they want
+    await Share.shareXFiles(
+      [XFile(tempFile.path)],
+      text: 'Generated SVG Diagram',
+      subject: 'AI Generated Diagram',
+    );
+    
+    return 'File shared successfully! You can save it from the share dialog.';
+  } catch (e) {
+    return 'Error sharing file: ${e.toString()}';
   }
 }
 

@@ -48,6 +48,7 @@ dependencies:
   file_saver: ^0.3.1
   url_launcher: ^6.1.10
   google_fonts: ^6.2.1
+  device_info_plus: ^10.1.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

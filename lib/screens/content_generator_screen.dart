@@ -35,7 +35,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
   List<GeneratedContent> _currentVariations = [];
   GeneratedContent? _selectedVariation;
   GeneratedContent? _hoveredVariation;
-  bool _isEditMode = false; // Edit mode toggle
+  // Removed _isEditMode since edit mode toggle was replaced with feedback star
 
   late AnimationController _animationController;
   late AnimationController _pulseController;
@@ -1713,18 +1713,21 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                     ],
                   ),
                 ),
-                // Edit mode toggle
+                // Feedback star button
                 IconButton(
                   onPressed: () {
-                    setState(() {
-                      _isEditMode = !_isEditMode;
-                    });
+                    // Show feedback for the currently selected variation
+                    if (_selectedVariation != null) {
+                      _showFeedbackForVariation(context, _selectedVariation!);
+                    } else if (_currentVariations.isNotEmpty) {
+                      _showFeedbackForVariation(context, _currentVariations.first);
+                    }
                   },
-                  icon: Icon(
-                    _isEditMode ? Icons.visibility : Icons.edit,
+                  icon: const Icon(
+                    Icons.star,
                     color: Colors.white,
                   ),
-                  tooltip: _isEditMode ? 'View Mode' : 'Edit Mode',
+                  tooltip: 'Give Feedback',
                 ),
               ],
             ),
@@ -2242,22 +2245,7 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
                   _editDiagram(variation);
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.download),
-                title: const Text('Download SVG'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _downloadVariation(variation);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.feedback, color: Colors.orange),
-                title: const Text('Give Feedback'),
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _showFeedbackForVariation(context, variation);
-                },
-              ),
+              // Removed Download SVG and Give Feedback buttons as requested
               ListTile(
                 leading: const Icon(Icons.delete),
                 title: const Text('Delete Variation'),
@@ -2296,27 +2284,8 @@ class _ContentGeneratorScreenState extends State<ContentGeneratorScreen>
 
   // Show feedback for variation
   void _showFeedbackForVariation(BuildContext context, GeneratedContent variation) {
-    // Directly show the feedback widget using a simple method
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Provide Feedback"),
-          content: StarFeedbackWidget(
-            size: 24,
-            mainContext: context,
-            isShowText: true,
-            icon: Icons.feedback,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text("Close"),
-            ),
-          ],
-        );
-      },
-    );
+    // Directly show the feedback dialog
+    StarFeedbackWidget.showFeedbackDialog(context);
   }
 
   // Edit diagram - Navigate to full screen editor

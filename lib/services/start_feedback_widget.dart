@@ -22,6 +22,195 @@ class StarFeedbackWidget extends StatefulWidget {
 
   @override
   State<StarFeedbackWidget> createState() => _StarFeedbackWidgetState();
+
+  /// Static method to show feedback dialog directly
+  static void showFeedbackDialog(BuildContext context) {
+    _showFeedbackDialogStatic(context);
+  }
+
+  /// Static implementation of feedback dialog
+  static void _showFeedbackDialogStatic(BuildContext context) {
+    String? selectedFeedback;
+    String? feedbackType = "Negative";
+    TextEditingController customFeedbackController = TextEditingController();
+
+    final Map<String, List<String>> feedbackOptions = {
+      "Positive": [
+        "Great content",
+        "Easy to understand",
+        "Visually appealing", 
+        "Informative",
+        "Well structured",
+        "Other",
+      ],
+      "Negative": [
+        "Confusing Too complex",
+        "Not visually appealing",
+        "Inappropriate or harmful content",
+        "Sexual or adult content",
+        "Bug or technical issue",
+        "Other",
+      ],
+    };
+
+    try {
+      showDialog(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text("Provide Feedback"),
+            content: SizedBox(
+              width: AppSizes.width(80),
+              child: StatefulBuilder(
+                builder: (context, setState) {
+                  return SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Positive/Negative Selection
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Radio<String>(
+                              value: "Positive",
+                              groupValue: feedbackType,
+                              onChanged: (value) {
+                                setState(() {
+                                  feedbackType = value;
+                                  selectedFeedback = null;
+                                  customFeedbackController.clear();
+                                });
+                              },
+                            ),
+                            const Text("Positive"),
+                            const SizedBox(width: 20),
+                            Radio<String>(
+                              value: "Negative",
+                              groupValue: feedbackType,
+                              onChanged: (value) {
+                                setState(() {
+                                  feedbackType = value;
+                                  selectedFeedback = null;
+                                  customFeedbackController.clear();
+                                });
+                              },
+                            ),
+                            const Text("Negative"),
+                          ],
+                        ),
+
+                        // Feedback Options
+                        ...feedbackOptions[feedbackType]!.map((option) {
+                          return RadioListTile<String>(
+                            title: Text(option),
+                            value: option,
+                            groupValue: selectedFeedback,
+                            onChanged: (value) {
+                              setState(() {
+                                selectedFeedback = value;
+                                if (value != "Other") {
+                                  customFeedbackController.clear();
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+
+                        // Show TextField if "Other" is selected
+                        if (selectedFeedback == "Other")
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10.0),
+                            child: TextField(
+                              controller: customFeedbackController,
+                              decoration: const InputDecoration(
+                                labelText: "Your feedback",
+                                border: OutlineInputBorder(),
+                                hintText: "Enter your feedback here...",
+                              ),
+                              maxLines: 3,
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () async {
+                  String finalFeedback = selectedFeedback == "Other"
+                      ? customFeedbackController.text
+                      : selectedFeedback ?? "";
+
+                  if (finalFeedback.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Please provide feedback."),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  try {
+                    await FirebaseFirestore.instance
+                        .collection('reported_messages')
+                        .add({
+                          'reason': finalFeedback,
+                          'type': feedbackType,
+                          'reportedAt': DateTime.now(),
+                        });
+
+                    // Close feedback dialog and show success
+                    Navigator.of(dialogContext).pop();
+                    
+                    // Show success dialog
+                    if (context.mounted) {
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (successContext) {
+                          return const AlertDialog(
+                            title: Text("Thank You!"),
+                            content: Text("Your feedback has been submitted."),
+                          );
+                        },
+                      );
+
+                      // Close success dialog after delay
+                      Future.delayed(const Duration(seconds: 1), () {
+                        if (context.mounted) {
+                          Navigator.of(context).pop(); // Close thank you dialog
+                        }
+                      });
+                    }
+                  } catch (e) {
+                    print("Error submitting feedback: $e");
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Error submitting feedback. Please try again."),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: const Text("Submit"),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      print("Error showing feedback dialog: $e");
+    }
+  }
 }
 
 class _StarFeedbackWidgetState extends State<StarFeedbackWidget> {

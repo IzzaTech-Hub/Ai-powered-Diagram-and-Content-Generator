@@ -156,26 +156,8 @@ class _DiagramVariationsScreenState extends State<DiagramVariationsScreen>
   }
 
   void _showFeedback() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text("Provide Feedback"),
-          content: StarFeedbackWidget(
-            size: 24,
-            mainContext: context,
-            isShowText: true,
-            icon: Icons.feedback,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text("Close"),
-            ),
-          ],
-        );
-      },
-    );
+    // Directly show the feedback dialog
+    StarFeedbackWidget.showFeedbackDialog(context);
   }
 
       Future<void> _handleDownload(GeneratedContent content) async {
